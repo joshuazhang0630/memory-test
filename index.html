@@ -125,36 +125,11 @@
             background-color: var(--scarlet-dark);
         }
 
-        .mark-button {
-            background-color: transparent;
-            color: var(--scarlet);
-            border: 2px solid var(--scarlet);
-            padding: 10px 28px;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-
-        .mark-button:hover,
-        .mark-button:focus {
-            background-color: rgba(187,0,0,0.08);
-        }
-
         .stimulus-panel {
             border: 1px solid var(--card-border);
             border-radius: 4px;
             padding: 24px;
             background-color: var(--white);
-        }
-
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            flex-wrap: wrap;
-            margin-top: 16px;
         }
 
         .action-row {
@@ -210,6 +185,17 @@
             font-size: 14px;
             color: var(--mid-gray);
             margin-bottom: 16px;
+        }
+
+        .time-display {
+            font-size: 14px;
+            color: var(--dark-gray);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .device-warning {
+            text-align: center;
         }
 
         .feedback-overlay {
@@ -397,6 +383,36 @@ function renderShell(content) {
     `;
 }
 
+function isUnsupportedDevice() {
+    var ua = navigator.userAgent || "";
+    var mobileRegex = /Mobi|Android|iPhone|iPad|iPod/i;
+    return window.innerWidth < 900 || mobileRegex.test(ua);
+}
+
+function showDeviceWarning() {
+    var warning = `
+        <section class="card device-warning">
+            <h1 class="section-title">Desktop Device Required</h1>
+            <p class="lead-text">
+                This study uses keyboard-based responses and must be completed on a laptop or desktop display.
+            </p>
+            <p class="lead-text">
+                Please access the experiment on a larger screen to proceed. Mobile phones and small tablets are not supported.
+            </p>
+        </section>
+    `;
+    document.body.innerHTML = renderShell(warning);
+}
+
+function enforceDesktopRequirement() {
+    if (isUnsupportedDevice()) {
+        deviceCompatible = false;
+        showDeviceWarning();
+    } else {
+        deviceCompatible = true;
+    }
+}
+
 // parameters set by the experimenter
 var fixation_address = "http://www.wilmabainbridge.com/datasets/memorabilitycollector/fixation.jpg";
 var images = new Array("https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111290/text10_znc0jk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text8_y2toyy.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text6_vpawfh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text7_zvkpuc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text9_tzi3hz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text3_afetxx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text4_vylzcd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text2_cqkf6r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text1_avjjsj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface9_izqjqz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text5_aqxpnr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface10_b02unk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111286/surface8_szl2lb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111284/surface7_nwdz2e.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface4_yi2ngr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface6_relhbw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface5_matvpr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface3_jxvtjf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface2_uwmqh1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface1_e1c1zi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111281/point10_hj2b5x.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point8_ypfykh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point9_j5yiic.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point7_ka9dgx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point6_gu6vyw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point5_ednd55.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point4_xetcvh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point3_d9rozu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink10_asekig.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point2_oiayvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point1_d98lcb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink9_uzdh5b.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111276/nodelink8_a6dbvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink7_qkqbpi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink6_opfusg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink5_s31tla.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink4_m3oky1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink3_exlfzl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink2_vb0vff.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line10_utszkf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink1_ycuc0d.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line9_sijrvb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line8_t93zzj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line7_lxmnz9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line6_tq0ief.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line5_sb163r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line4_iqhekn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line3_sqis4w.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111269/line2_bpagix.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid10_napfww.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid8_keyxfp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/line1_day5yn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid9_od8uj9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid7_ormde1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid6_j1e9sp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid3_wf3wn2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid5_ti7ut6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph10_fcmvcr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid4_if2k6n.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph8_fxsral.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid2_v55hqx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid1_efaryh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph9_hkhcim.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph7_h7f8tj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph6_w6vxxh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph5_kgt1vt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph3_pghnuh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph4_wskbsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph2_tqtbwl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph1_dfxi4p.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111260/color10_yiq9ov.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color8_wtraks.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color9_lfg9xx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color7_clqmwn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color5_kyavlx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color6_e4e6i2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color1_f2iead.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar10_wsbahb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar5_fhwday.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color3_pjmg6s.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color4_znonfg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar9_u2ba82.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/color2_qm9eyc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar8_jnzovj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar7_tzacsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar4_nsb0pt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area6_r5fivi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar6_nksyxa.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar2_hggvkn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area10_rnnsx2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar3_qfh4yl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar1_vhudoq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area7_rjswg9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area9_rqbel4.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area8_ggkuss.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area4_o4rtbi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area3_w9nmgq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area5_smohfc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area2_ge4gp6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area1_fvkfyw.png");
@@ -405,7 +421,7 @@ var stimtime = 2000; // in milliseconds
 var isi = 1200; // in milliseconds
 var delayBetTargets = 120; // in seconds
 var delayBetVigilance = 5; // in trials. The size of image blocks
-var keytoWatch = "r"; // case doesn't matter
+var keytoWatch = "space"; // use space bar for responses
 var subsperim = 40; // how many subjects you want per image
 var payperhour = 5; // how much money you want to pay per hour
 var vigilancecutoff = 10; // the number of vigilances they're allowed to fail before being booted
@@ -416,6 +432,14 @@ var maxBreakTime = 15; // in seconds
 // text set by the experimenter
 var failuretext = "<h2 class='section-title'>Session Halted</h2><p>You exceeded the permitted error rate. Please submit the session to record participation.</p>";
 var donetext = "<h2 class='section-title'>Session Complete</h2><p>Thank you for your diligence. You may now submit the session for credit.</p>";
+
+var deviceCompatible = true;
+var totalExperimentDuration = 0;
+var experimentStartTimestamp = null;
+var timerInterval = null;
+var breakCountdownInterval = null;
+var breakTimeRemaining = 0;
+var breakResumeTimeout = null;
 
 // Pretrain variables
 var pretrainImages = []; // Will store indices of images used for pretrain
@@ -570,19 +594,24 @@ function showInstructions() {
         <section class="card">
             <h1 class="section-title">Visual Memorability Study</h1>
             <p class="lead-text">
-                Thank you for contributing to the Computer Visualization Lab at The Ohio State University.
-                During this study you will evaluate visualizations and indicate when an image repeats.
+                Thank you for contributing to the Computer Vision & Scientific Visualization Lab at The Ohio State University.
+                During this study you will evaluate visualizations and indicate when an image repeats <strong>within the current block</strong>.
             </p>
             <ol class="instruction-list">
-                <li><strong>Attend carefully.</strong> Each visualization will appear 1 second followed by a fixation interval.</li>
-                <li><strong>Respond only to repeats.</strong> Press the <strong>SPACE BAR</strong> or use the on-screen mark control when you recognize a repeated image.</li>
+                <li><strong>Attend carefully.</strong> Each visualization appears for 1 second followed by a fixation interval.</li>
+                <li><strong>Respond only to repeats.</strong> Press the <strong>SPACE BAR</strong> as soon as you recognize a repeated image in the active block.</li>
+                <li><strong>Remain focused.</strong> Repeats may occur long after first exposure and can closely resemble other images.</li>
             </ol>
             <p class="lead-text">
-                We will begin with a short practice to ensure the procedure is clear.
-                Results are not recorded during practice.
+                Performance monitoring: the system tracks <strong>false alarms</strong> (responding to new images) and <strong>vigilance misses</strong>
+                (missing scheduled repeats). The session ends if you exceed ${facutoff} false alarms or ${vigilancecutoff} vigilance misses.
+            </p>
+            <p class="lead-text">
+                We begin with a short practice block to ensure the procedure is clear. Practice data are not stored, and all responses
+                in both practice and the primary experiment must be made with the <strong>SPACE BAR</strong>.
             </p>
             <div class="action-row">
-                <button class="primary-button" onclick="startPretrain()">Begin Practice</button>
+                <button class="primary-button" onclick="startPretrain()">Begin Practice Block</button>
             </div>
         </section>
     `;
@@ -595,29 +624,26 @@ function startPretrain() {
 	pretrainImCount = -1;
 	
     // Reset counters
-    pretrainHits = 0;
-    pretrainMisses = 0;
-    pretrainFalseAlarms = 0;
-    pretrainCorrectRejections = 0;
-    
+	pretrainHits = 0;
+	pretrainMisses = 0;
+	pretrainFalseAlarms = 0;
+	pretrainCorrectRejections = 0;
+	
 	var practiceView = `
 		<section class="card">
-			<h1 class="section-title">Practice</h1>
+			<h1 class="section-title">Practice Block</h1>
 			<p class="lead-text">
-				During practice, respond only when a visualization repeats. Use the <strong>SPACE BAR</strong> or the on-screen mark control.
+				During practice, respond only when a visualization repeats within this practice block. Use the <strong>SPACE BAR</strong> to register detections.
 			</p>
 			<div class="stimulus-panel">
 				<div id="performancerecord" class="instruction-callout">
-					Press SPACE or select “Mark Repeat” to begin the practice sequence.
+					Press SPACE to begin the practice sequence.
 				</div>
 				<div class="stimulus-frame">
 					<img id="stimulus" src="${fixation_address}" alt="Practice stimulus">
 				</div>
 			</div>
-			<div class="controls">
-				<button type="button" class="mark-button" onclick="markButtonPress()">Mark Repeat</button>
-				<span class="muted-text">Keyboard shortcut: Space bar</span>
-			</div>
+			<p class="muted-text">Keyboard input required: SPACE BAR only.</p>
 		</section>
 	`;
 	document.body.innerHTML = renderShell(practiceView);
@@ -734,7 +760,7 @@ function showPretrainResults() {
 		<section class="card">
 			<h1 class="section-title">Practice Summary</h1>
 			<p class="lead-text">
-				The pretrain is complete. Review your performance below before advancing to the primary session.
+				The calibration block is complete. Review your performance below before advancing to the primary session.
 			</p>
 			<div class="stats-grid">
 				<div class="stat-item">
@@ -750,6 +776,10 @@ function showPretrainResults() {
 					<div class="stat-value">${pretrainFalseAlarms}</div>
 				</div>
 			</div>
+			<p class="lead-text">
+				Respond only when the visualization is identical to one seen earlier within the <strong>current game</strong>, and continue using the <strong>SPACE BAR</strong> for every response.
+				After you continue, all practice images are removed and do not influence the primary experiment.
+			</p>
 			<div class="action-row">
 				<button class="primary-button" onclick="startRealExperiment()">Continue to Experiment</button>
 			</div>
@@ -761,6 +791,8 @@ function showPretrainResults() {
 // Start real experiment
 function startRealExperiment() {
 	inPretrainMode = false;
+	stopExperimentTimer();
+	experimentStartTimestamp = null;
     
     // Remove pretrain images from the main image array
     var newImages = [];
@@ -782,24 +814,25 @@ function startRealExperiment() {
 
 			<h1 class="section-title">Visual Memorability Assessment</h1>
 			<p class="lead-text">
-				Press the <strong>R key</strong> whenever you detect an exact repeat of a visualization. Avoid responses during fixation intervals.
+				Press the <strong>SPACE BAR</strong> whenever you detect an exact repeat of a visualization in this current game.
+				Images from the practice block have been removed and will not appear here. Avoid responses during fixation intervals.
 			</p>
 			<div class="progress-track" aria-hidden="false">
 				<div class="progress-bar" id="experiment-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
 			</div>
 			<div id="progress-label" class="progress-label">Progress 0%</div>
+			<div id="time-display" class="time-display" aria-live="polite">Elapsed 00:00 • Approx. remaining --:--</div>
 			<div class="stimulus-panel">
 				<div id="performancerecord" class="instruction-callout">
-					Press R or use “Mark Repeat” to initiate the sequence. Ensure this window has keyboard focus.
+					Press the SPACE BAR to initiate the sequence. Ensure this window has keyboard focus.
 				</div>
 				<div class="stimulus-frame">
 					<img id="stimulus" src="${fixation_address}" alt="Stimulus image">
 				</div>
 			</div>
-			<div class="controls">
-				<button type="button" class="mark-button" onclick="markButtonPress()">Mark Repeat</button>
-				<span class="muted-text">Keyboard shortcut: R</span>
-			</div>
+			<p class="muted-text">
+				Error monitoring: exceeding ${facutoff} total false alarms or ${vigilancecutoff} missed vigilance repeats will end the session early.
+			</p>
 			<p class="irb-note">
 				By continuing you confirm your voluntary participation in an OSU-approved research protocol. Please complete the entire block before submitting.
 			</p>
@@ -815,6 +848,7 @@ function startRealExperiment() {
 		e.preventDefault();
 		saveProgress();
 		sendToSheets();
+		stopExperimentTimer();
 		var thanks = `
 			<section class="card text-center">
 				<h1 class="section-title">Submission Received</h1>
@@ -832,18 +866,27 @@ function startRealExperiment() {
 
 // key press listener
 document.onkeydown = function(key){ 
+	if (!deviceCompatible){
+		return;
+	}
     if (inPretrainMode) {
-        if (String.fromCharCode(key.keyCode).toLowerCase() === ' ' || 
-            String.fromCharCode(key.keyCode).toLowerCase() === 'space') {
+        if (isSpaceKey(key)) {
+            key.preventDefault();
             processPretrainResponse();
         }
     } else {
-        processResponse(key);
+        if (isResponseKey(key)){
+            key.preventDefault();
+            processResponse(key);
+        }
     }
 };
 
 document.addEventListener('keydown', function(event) {
-    if (onBreak && event.key.toLowerCase() === 'c') {
+	if (!deviceCompatible){
+		return;
+	}
+    if (onBreak && event.key && event.key.toLowerCase() === 'c') {
         giveBreak(1);
     }
 });
@@ -853,7 +896,7 @@ function buttonPress(){
 	document.getElementById("startbutton").innerHTML = "Experiment Running...";
 	document.getElementById("startbutton").disabled = true;
 	preloadEverything();
-	document.getElementById("performancerecord").innerHTML = "Press the <b>R key</b> (or the mark button for mobile users) to start. If it doesn't work, make sure to click in this browser window first.";
+	document.getElementById("performancerecord").innerHTML = "Press the <b>SPACE BAR</b> to start. If it doesn't work, make sure to click in this browser window first.";
 }
 
 // recursive function that shows the images in a sequence
@@ -896,15 +939,44 @@ function preloadEverything() {
 function giveBreak(going){
 	if (going){
 		onBreak = false;
+		if (breakCountdownInterval){
+			clearInterval(breakCountdownInterval);
+			breakCountdownInterval = null;
+		}
+		if (breakResumeTimeout){
+			clearTimeout(breakResumeTimeout);
+			breakResumeTimeout = null;
+		}
 		document.getElementById("performancerecord").innerHTML = '';
-		setTimeout("animateSequence()", timesequence[imCount])
+		setTimeout(function(){ animateSequence(); }, timesequence[imCount]);
 		return;
 	}
 	onBreak = true;
 	document.getElementById("stimulus").src = fixation_address;
-	document.getElementById("performancerecord").innerHTML = '<h2>Break time!</h2>Good job - you will now get a break. Please do not break for longer than ' + maxBreakTime + ' seconds or the HIT will continue without you. Press "<b>C</b>" to continue.';
+	breakTimeRemaining = maxBreakTime;
+	document.getElementById("performancerecord").innerHTML = '<h2>Break time!</h2>Good job - you will now get a break. You have <span id="break-countdown">' + breakTimeRemaining + '</span> seconds remaining before the task resumes automatically. Press "<b>C</b>" to continue sooner.';
 	
-	setTimeout("giveBreak(1)", maxBreakTime*1000);
+	if (breakCountdownInterval){
+		clearInterval(breakCountdownInterval);
+	}
+	breakCountdownInterval = setInterval(function(){
+		breakTimeRemaining = Math.max(0, breakTimeRemaining - 1);
+		var span = document.getElementById("break-countdown");
+		if (span){
+			span.textContent = breakTimeRemaining;
+		}
+		if (breakTimeRemaining <= 0){
+			clearInterval(breakCountdownInterval);
+			breakCountdownInterval = null;
+		}
+	}, 1000);
+	
+	if (breakResumeTimeout){
+		clearTimeout(breakResumeTimeout);
+	}
+	breakResumeTimeout = setTimeout(function(){
+		giveBreak(1);
+	}, maxBreakTime*1000);
 }
 
 // builds the full sequence with both images and fixations, as well as timings
@@ -926,6 +998,7 @@ function buildFullSequence(){
 		i++;
 	}
 	console.log("Done building the full sequence.");
+	totalExperimentDuration = timesequence.reduce(function(total, value){ return total + value; }, 0);
 }
 
 function updateExperimentProgress(){
@@ -946,14 +1019,84 @@ function updateExperimentProgress(){
 	if (label){
 		label.textContent = "Progress " + Math.round(percent) + "%";
 	}
+	updateTimerDisplay();
+}
+
+function formatTimer(ms){
+	var totalSeconds = Math.max(0, Math.floor(ms / 1000));
+	var minutes = Math.floor(totalSeconds / 60);
+	var seconds = totalSeconds % 60;
+	return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+}
+
+function updateTimerDisplay(){
+	var display = document.getElementById("time-display");
+	if (!display){
+		return;
+	}
+	if (!experimentStartTimestamp || totalExperimentDuration === 0){
+		display.textContent = "Elapsed 00:00 • remaining --:--";
+		return;
+	}
+	var elapsed = Date.now() - experimentStartTimestamp;
+	var remaining = Math.max(0, totalExperimentDuration - elapsed);
+	display.textContent = "Elapsed " + formatTimer(elapsed) + " remaining " + formatTimer(remaining);
+}
+
+function startExperimentTimer(){
+	if (!experimentStartTimestamp){
+		experimentStartTimestamp = Date.now();
+	}
+	if (timerInterval){
+		return;
+	}
+	updateTimerDisplay();
+	timerInterval = setInterval(updateTimerDisplay, 1000);
+}
+
+function stopExperimentTimer(){
+	if (timerInterval){
+		clearInterval(timerInterval);
+		timerInterval = null;
+	}
+}
+
+function isSpaceKey(event){
+	if (!event){
+		return false;
+	}
+	if (event.code && event.code.toLowerCase() === "space"){
+		return true;
+	}
+	if (event.key){
+		var keyName = event.key.toLowerCase();
+		if (keyName === " " || keyName === "spacebar" || keyName === "space"){
+			return true;
+		}
+	}
+	if (event.keyCode){
+		return event.keyCode === 32;
+	}
+	return false;
+}
+
+function isResponseKey(event){
+	if (keytoWatch === "space"){
+		return isSpaceKey(event);
+	}
+	var pressed = event.key ? event.key.toLowerCase() : String.fromCharCode(event.keyCode).toLowerCase();
+	return pressed === keytoWatch.toLowerCase();
 }
 
 // get the key and respond
 function processResponse(key){
-	if(String.fromCharCode(key.keyCode).toLowerCase() == keytoWatch.toLowerCase()){
+	if(isResponseKey(key)){
 		var trialtype = typesequence[imCount];
 		if (imCount<0) {
 			document.getElementById("performancerecord").innerHTML = "";
+			if (!inPretrainMode){
+				startExperimentTimer();
+			}
 			animateSequence();
 		}
 		if ((trialtype == FIXATION) && imCount > 0) {
@@ -966,38 +1109,6 @@ function processResponse(key){
 			perfsequence[imCount] = FALSEALARM;
 			console.log("False alarm!");
 		}
-	}
-}
-
-function markButtonPress(){
-	if (inPretrainMode){
-		processPretrainResponse();
-	} else {
-		processResponseM();
-	}
-}
-
-// for mobile
-function processResponseM(){
-    if (inPretrainMode) {
-        processPretrainResponse();
-        return;
-    }
-    
-	var trialtype = typesequence[imCount];
-	if (imCount<0) {
-		document.getElementById("performancerecord").innerHTML = "";
-		animateSequence();
-	}
-	if ((trialtype == FIXATION) && imCount > 0) {
-		trialtype = typesequence[imCount-1];
-	}
-	if (trialtype == REPEAT | trialtype == VIGILANCE) {
-		perfsequence[imCount] = HIT;
-		console.log("Hit!");
-	} else if (trialtype == TARGET | trialtype == FILLER) {
-		perfsequence[imCount] = FALSEALARM;
-		console.log("False alarm!");
 	}
 }
 
@@ -1022,6 +1133,7 @@ function determineFailure(){
 
 // visually show their failure!
 function showFailure(){
+	stopExperimentTimer();
 	document.getElementById("performancerecord").innerHTML = failuretext;
 	propcompleted = imCount/fullsequence.length*100;
 	propcompleted = propcompleted.toFixed(2);
@@ -1030,6 +1142,7 @@ function showFailure(){
 
 // end the game if they make it to the end!
 function showEnding(){
+	stopExperimentTimer();
 	document.getElementById("performancerecord").innerHTML = donetext;
 	document.getElementById("endingout").value = "completed";
 }
@@ -1283,19 +1396,33 @@ var pid = '';
 </div>
 
 <script>
-  	document.getElementById('prolific-form').onsubmit = function(e) {
-   		e.preventDefault();
-    	pid = document.getElementById('prolific-id-input').value.trim();
-    	if(pid) {
-      		document.getElementById('splash').style.display = 'none';
-      		
-      		// Build pretrain sequence
-      		buildPretrainSequence();
-      		
-      		// Show instructions
-      		showInstructions();
-    	}
-  	};
+	document.addEventListener('DOMContentLoaded', function(){
+		enforceDesktopRequirement();
+		if (!deviceCompatible){
+			return;
+		}
+		var form = document.getElementById('prolific-form');
+		if (!form){
+			return;
+		}
+		form.onsubmit = function(e) {
+			e.preventDefault();
+			enforceDesktopRequirement();
+			if (!deviceCompatible){
+				return;
+			}
+			pid = document.getElementById('prolific-id-input').value.trim();
+			if(pid) {
+				document.getElementById('splash').style.display = 'none';
+				
+				// Build pretrain sequence
+				buildPretrainSequence();
+				
+				// Show instructions
+				showInstructions();
+			}
+		};
+	});
 </script>
 </body>
 </html>
