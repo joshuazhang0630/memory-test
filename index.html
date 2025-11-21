@@ -296,6 +296,66 @@
             font-size: 16px;
             margin: 12px 0 20px;
         }
+
+        .textarea-field {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid var(--card-border);
+            border-radius: 4px;
+            font-size: 16px;
+            margin: 12px 0 20px;
+            resize: vertical;
+        }
+
+        .question-block {
+            margin-bottom: 24px;
+        }
+
+        .option-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 12px 0;
+        }
+
+        .option-list label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .small-note {
+            font-size: 13px;
+            color: var(--mid-gray);
+        }
+
+        .image-pair {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 12px 0 8px;
+        }
+
+        .image-choice {
+            border: 1px solid var(--card-border);
+            border-radius: 4px;
+            padding: 10px;
+            background: var(--white);
+            text-align: center;
+        }
+
+        .image-choice img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: var(--card-border);
+            margin: 28px 0;
+        }
     </style>
 </head>
 <body>
@@ -383,6 +443,37 @@ function renderShell(content) {
     `;
 }
 
+function imageLabelFromUrl(url){
+    if (!url){
+        return "Image";
+    }
+    var filename = url.substring(url.lastIndexOf("/") + 1);
+    return filename.split(".")[0];
+}
+
+function pickRandomImagePair(){
+    var pool = allImagesCatalog.slice();
+    shuffleArray(pool);
+    return pool.slice(0, 2);
+}
+
+function sampleImagesForPost(count){
+    var pool = (images && images.length ? images : allImagesCatalog).slice();
+    shuffleArray(pool);
+    return pool.slice(0, Math.min(count, pool.length));
+}
+
+function renderImageChoice(url, groupName, value){
+    var label = imageLabelFromUrl(url);
+    return `
+        <label class="image-choice">
+            <input type="radio" name="${groupName}" value="${value}" required>
+            <div><strong>${label}</strong></div>
+            <img src="${url}" alt="${label}">
+        </label>
+    `;
+}
+
 function isUnsupportedDevice() {
     var ua = navigator.userAgent || "";
     var mobileRegex = /Mobi|Android|iPhone|iPad|iPod/i;
@@ -417,6 +508,29 @@ function enforceDesktopRequirement() {
 var fixation_address = "http://www.wilmabainbridge.com/datasets/memorabilitycollector/fixation.jpg";
 var images = new Array("https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111290/text10_znc0jk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text8_y2toyy.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text6_vpawfh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text7_zvkpuc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text9_tzi3hz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text3_afetxx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text4_vylzcd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text2_cqkf6r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text1_avjjsj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface9_izqjqz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text5_aqxpnr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface10_b02unk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111286/surface8_szl2lb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111284/surface7_nwdz2e.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface4_yi2ngr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface6_relhbw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface5_matvpr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface3_jxvtjf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface2_uwmqh1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface1_e1c1zi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111281/point10_hj2b5x.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point8_ypfykh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point9_j5yiic.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point7_ka9dgx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point6_gu6vyw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point5_ednd55.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point4_xetcvh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point3_d9rozu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink10_asekig.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point2_oiayvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point1_d98lcb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink9_uzdh5b.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111276/nodelink8_a6dbvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink7_qkqbpi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink6_opfusg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink5_s31tla.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink4_m3oky1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink3_exlfzl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink2_vb0vff.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line10_utszkf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink1_ycuc0d.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line9_sijrvb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line8_t93zzj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line7_lxmnz9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line6_tq0ief.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line5_sb163r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line4_iqhekn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line3_sqis4w.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111269/line2_bpagix.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid10_napfww.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid8_keyxfp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/line1_day5yn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid9_od8uj9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid7_ormde1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid6_j1e9sp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid3_wf3wn2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid5_ti7ut6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph10_fcmvcr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid4_if2k6n.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph8_fxsral.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid2_v55hqx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid1_efaryh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph9_hkhcim.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph7_h7f8tj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph6_w6vxxh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph5_kgt1vt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph3_pghnuh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph4_wskbsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph2_tqtbwl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph1_dfxi4p.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111260/color10_yiq9ov.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color8_wtraks.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color9_lfg9xx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color7_clqmwn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color5_kyavlx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color6_e4e6i2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color1_f2iead.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar10_wsbahb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar5_fhwday.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color3_pjmg6s.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color4_znonfg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar9_u2ba82.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/color2_qm9eyc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar8_jnzovj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar7_tzacsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar4_nsb0pt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area6_r5fivi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar6_nksyxa.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar2_hggvkn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area10_rnnsx2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar3_qfh4yl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar1_vhudoq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area7_rjswg9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area9_rqbel4.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area8_ggkuss.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area4_o4rtbi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area3_w9nmgq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area5_smohfc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area2_ge4gp6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area1_fvkfyw.png");
 
+var allImagesCatalog = images.slice();
+var complexityPair = [];
+var preSurveyResponses = {
+    workerId: "",
+    takenBefore: "",
+    gender: "",
+    genderSelf: "",
+    age: "",
+    education: "",
+    complexVizDesc: "",
+    complexVizLink: "",
+    complexityChoice: "",
+    complexityImageA: "",
+    complexityImageB: ""
+};
+var postSurveyResponses = {
+    rememberedImage: "",
+    rememberFeatures: "",
+    studyComments: ""
+};
+var experimentCompleted = false;
+var postSurveyVisible = false;
+var endingStatus = "";
 var stimtime = 2000; // in milliseconds
 var isi = 1200; // in milliseconds
 var delayBetTargets = 120; // in seconds
@@ -586,6 +700,110 @@ function buildPretrainSequence() {
     pretrainPerfSequence = perf;
     
     console.log("Pretrain sequence built:", pretrainSequence.length, "images");
+}
+
+function showPreSurvey(){
+    complexityPair = pickRandomImagePair();
+    var content = `
+        <section class="card">
+            <h1 class="section-title">Please tell us a bit about yourself.</h1>
+            <p class="lead-text">Fields marked with a * are required.</p>
+            <form id="pre-survey-form" autocomplete="off">
+                <div class="question-block">
+                    <label class="muted-text" for="worker-id-input">Please provide your worker ID if you come from a crowdsourcing platform</label>
+                    <input type="text" id="worker-id-input" class="input-field" placeholder="Worker ID (optional)">
+                </div>
+                <div class="question-block">
+                    <label class="muted-text">Have you taken this test before? *</label>
+                    <div class="option-list">
+                        <label><input type="radio" name="taken-before" value="yes" required>Yes</label>
+                        <label><input type="radio" name="taken-before" value="no" required>No</label>
+                        <label><input type="radio" name="taken-before" value="unsure" required>Unsure</label>
+                    </div>
+                </div>
+                <div class="question-block">
+                    <label class="muted-text">What is your gender? *</label>
+                    <div class="option-list">
+                        <label><input type="radio" name="gender" value="man" required>Man</label>
+                        <label><input type="radio" name="gender" value="woman" required>Woman</label>
+                        <label><input type="radio" name="gender" value="non-binary" required>Non-binary</label>
+                        <label><input type="radio" name="gender" value="prefer-not" required>Prefer not to disclose</label>
+                        <label><input type="radio" name="gender" value="self" required>Prefer to self-describe</label>
+                    </div>
+                    <input type="text" id="gender-self-input" class="input-field" placeholder="If self-describing, enter here (optional)">
+                </div>
+                <div class="question-block">
+                    <label class="muted-text" for="age-select">How old are you? *</label>
+                    <select id="age-select" class="input-field" required>
+                        <option value="">Select an age range</option>
+                        <option value="0-10">0-10</option>
+                        <option value="10-20">10-20</option>
+                        <option value="20-30">20-30</option>
+                        <option value="30-40">30-40</option>
+                        <option value="40-50">40-50</option>
+                        <option value="50+">50+</option>
+                    </select>
+                </div>
+                <div class="question-block">
+                    <label class="muted-text" for="education-select">What is the highest level of education you have received? *</label>
+                    <select id="education-select" class="input-field" required>
+                        <option value="">Select one</option>
+                        <option value="high-school">High school or equivalent</option>
+                        <option value="some-college">Some college</option>
+                        <option value="bachelors">Bachelor's degree</option>
+                        <option value="masters">Master's degree</option>
+                        <option value="phd">PhD or doctoral degree</option>
+                        <option value="professional">Professional degree</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="question-block">
+                    <label class="muted-text" for="complex-desc">Describe the most complex visualization you have ever seen. What does it look like? *</label>
+                    <textarea id="complex-desc" class="textarea-field" required placeholder="Describe the visualization"></textarea>
+                    <label class="muted-text" for="complex-link">Link to the image (optional)</label>
+                    <input type="url" id="complex-link" class="input-field" placeholder="https://">
+                </div>
+                <div class="question-block">
+                    <label class="muted-text">Visual complexity is broadly defined as the level of detail or intricacy contained within an image. Which image feels more visually complex? *</label>
+                    <div class="image-pair">
+                        ${renderImageChoice(complexityPair[0], "complexity-choice", "A")}
+                        ${renderImageChoice(complexityPair[1], "complexity-choice", "B")}
+                    </div>
+                    <div class="small-note">Pick the option you feel strongest about.</div>
+                </div>
+                <div class="action-row">
+                    <button type="submit" class="primary-button">Continue to Instructions</button>
+                </div>
+            </form>
+        </section>
+    `;
+    document.body.innerHTML = renderShell(content);
+
+    var workerInput = document.getElementById("worker-id-input");
+    if (workerInput && pid){
+        workerInput.value = pid;
+    }
+
+    var preForm = document.getElementById("pre-survey-form");
+    if (preForm){
+        preForm.onsubmit = function(e){
+            e.preventDefault();
+            preSurveyResponses.workerId = (document.getElementById("worker-id-input").value || "").trim();
+            preSurveyResponses.takenBefore = (document.querySelector("input[name='taken-before']:checked") || {}).value || "";
+            preSurveyResponses.gender = (document.querySelector("input[name='gender']:checked") || {}).value || "";
+            preSurveyResponses.genderSelf = (document.getElementById("gender-self-input").value || "").trim();
+            preSurveyResponses.age = document.getElementById("age-select").value;
+            preSurveyResponses.education = document.getElementById("education-select").value;
+            preSurveyResponses.complexVizDesc = (document.getElementById("complex-desc").value || "").trim();
+            preSurveyResponses.complexVizLink = (document.getElementById("complex-link").value || "").trim();
+            preSurveyResponses.complexityChoice = (document.querySelector("input[name='complexity-choice']:checked") || {}).value || "";
+            preSurveyResponses.complexityImageA = complexityPair[0];
+            preSurveyResponses.complexityImageB = complexityPair[1];
+
+            buildPretrainSequence();
+            showInstructions();
+        };
+    }
 }
 
 // Show instruction page
@@ -801,8 +1019,8 @@ function startRealExperiment() {
     }
     images = newImages;
     
-    console.log("Starting real experiment with", images.length, "images");
-    
+	console.log("Starting real experiment with", images.length, "images");
+	
 	var interfaceView = `
 		<form id="form" class="card" autocomplete="off">
 			<input type="hidden" name="imseq" id="imseqout" value="">
@@ -834,9 +1052,7 @@ function startRealExperiment() {
 			<p class="irb-note">
 				By continuing you confirm your voluntary participation in an OSU-approved research protocol. Please complete the entire block before submitting.
 			</p>
-			<div class="action-row">
-				<button type="submit" id="submitbutton" class="primary-button">Submit Session</button>
-			</div>
+			<p class="muted-text text-center">Post-study questions will appear automatically once the session ends.</p>
 		</form>
 	`;
 	document.body.innerHTML = renderShell(interfaceView);
@@ -844,17 +1060,9 @@ function startRealExperiment() {
 	// Setup form submission
 	document.getElementById("form").onsubmit = function(e){
 		e.preventDefault();
-		saveProgress();
-		sendToSheets();
-		stopExperimentTimer();
-		var thanks = `
-			<section class="card text-center">
-				<h1 class="section-title">Submission Received</h1>
-				<p class="lead-text">Thank you for supporting the Computer Vision Lab. Your responses have been securely recorded.</p>
-				<p class="irb-note">You may now close this window.</p>
-			</section>
-		`;
-		document.body.innerHTML = renderShell(thanks);
+		if (!postSurveyVisible){
+			document.getElementById("performancerecord").innerHTML = "Please finish the experiment; post-study questions will appear automatically.";
+		}
 	};
 	
 	// Now preload and start the real experiment
@@ -1129,20 +1337,101 @@ function determineFailure(){
 	}
 }
 
+function showPostSurvey(){
+	if (postSurveyVisible){
+		return;
+	}
+	postSurveyVisible = true;
+	saveProgress();
+	stopExperimentTimer();
+	var rememberedSample = sampleImagesForPost(4);
+	var rememberedHtml = rememberedSample.map(function(url){
+		return renderImageChoice(url, "remembered-image", url);
+	}).join("");
+	var content = `
+		<form id="form" class="card" autocomplete="off">
+			<input type="hidden" name="imseq" id="imseqout" value="">
+			<input type="hidden" name="imtypeseq" id="imtypeseqout" value="">
+			<input type="hidden" name="perfseq" id="perfseqout" value="">
+			<input type="hidden" name="ending" id="endingout" value="">
+			<input type="hidden" name="post_image_options" id="post-image-options" value="">
+
+			<h1 class="section-title">Post-study questions</h1>
+			<div class="question-block">
+				<label class="muted-text">Pick a picture you remember correctly from the game and tell us what helped you remember it. *</label>
+				<div class="image-pair">
+					${rememberedHtml}
+				</div>
+				<textarea id="remember-features" name="remember_features" class="textarea-field" required placeholder="Describe the feature(s) that helped you remember."></textarea>
+			</div>
+			<div class="question-block">
+				<label class="muted-text" for="study-comments">What comments do you have about the study?</label>
+				<textarea id="study-comments" name="study_comments" class="textarea-field" placeholder="Optional feedback"></textarea>
+			</div>
+			<div class="action-row">
+				<button type="submit" class="primary-button">Submit Session</button>
+			</div>
+		</form>
+	`;
+	document.body.innerHTML = renderShell(content);
+
+	var imseqInput = document.getElementById("imseqout");
+	var imtypeInput = document.getElementById("imtypeseqout");
+	var perfInput = document.getElementById("perfseqout");
+	var endingInput = document.getElementById("endingout");
+	var postOptionsInput = document.getElementById("post-image-options");
+	if (imseqInput){ imseqInput.value = imgstring; }
+	if (imtypeInput){ imtypeInput.value = imtypestring; }
+	if (perfInput){ perfInput.value = perfstring; }
+	if (endingInput){ endingInput.value = endingStatus || "completed"; }
+	if (postOptionsInput){ postOptionsInput.value = rememberedSample.join(","); }
+
+	var postForm = document.getElementById("form");
+	if (postForm){
+		postForm.onsubmit = function(e){
+			e.preventDefault();
+			postSurveyResponses.rememberedImage = (document.querySelector("input[name='remembered-image']:checked") || {}).value || "";
+			postSurveyResponses.rememberFeatures = (document.getElementById("remember-features").value || "").trim();
+			postSurveyResponses.studyComments = (document.getElementById("study-comments").value || "").trim();
+			sendToSheets();
+			var thanks = `
+				<section class="card text-center">
+					<h1 class="section-title">Submission Received</h1>
+					<p class="lead-text">Thank you for supporting the Computer Vision Lab. Your responses have been securely recorded.</p>
+					<p class="irb-note">You may now close this window.</p>
+				</section>
+			`;
+			document.body.innerHTML = renderShell(thanks);
+		};
+	}
+}
+
 // visually show their failure!
 function showFailure(){
 	stopExperimentTimer();
 	document.getElementById("performancerecord").innerHTML = failuretext;
 	propcompleted = imCount/fullsequence.length*100;
 	propcompleted = propcompleted.toFixed(2);
-	document.getElementById("endingout").value = "failed@" + propcompleted + "%";
+	endingStatus = "failed@" + propcompleted + "%";
+	var endingInput = document.getElementById("endingout");
+	if (endingInput){
+		endingInput.value = endingStatus;
+	}
+	experimentCompleted = true;
+	showPostSurvey();
 }
 
 // end the game if they make it to the end!
 function showEnding(){
 	stopExperimentTimer();
+	experimentCompleted = true;
+	endingStatus = "completed";
+	var endingInput = document.getElementById("endingout");
+	if (endingInput){
+		endingInput.value = endingStatus;
+	}
 	document.getElementById("performancerecord").innerHTML = donetext;
-	document.getElementById("endingout").value = "completed";
+	showPostSurvey();
 }
 
 // create the memorability-based image sequence
@@ -1340,7 +1629,21 @@ function sendToSheets() {
         perfseq: perfstring,
         ending: document.getElementById("endingout").value,
         vigilancefails: vigilancefails,
-        falsealarmcounts: falsealarmcounts
+        falsealarmcounts: falsealarmcounts,
+        pre_worker_id: preSurveyResponses.workerId,
+        pre_taken_before: preSurveyResponses.takenBefore,
+        pre_gender: preSurveyResponses.gender,
+        pre_gender_self: preSurveyResponses.genderSelf,
+        pre_age: preSurveyResponses.age,
+        pre_education: preSurveyResponses.education,
+        pre_complex_viz_desc: preSurveyResponses.complexVizDesc,
+        pre_complex_viz_link: preSurveyResponses.complexVizLink,
+        pre_complexity_choice: preSurveyResponses.complexityChoice,
+        pre_complexity_image_a: preSurveyResponses.complexityImageA,
+        pre_complexity_image_b: preSurveyResponses.complexityImageB,
+        post_remembered_image: postSurveyResponses.rememberedImage,
+        post_remember_features: postSurveyResponses.rememberFeatures,
+        post_study_comments: postSurveyResponses.studyComments
 	};
 	const appsURL = "https://script.google.com/macros/s/AKfycbwHrtdpZCQxWMxM4eEygi0ucWYixxAPEKHaYob6n5ArJkQDg1ifrDHb_Hd94ZNxzzz7/exec";
     
@@ -1412,11 +1715,8 @@ var pid = '';
 			if(pid) {
 				document.getElementById('splash').style.display = 'none';
 				
-				// Build pretrain sequence
-				buildPretrainSequence();
-				
-				// Show instructions
-				showInstructions();
+				// Go to demographics & pre-questions
+				showPreSurvey();
 			}
 		};
 	});
