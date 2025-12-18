@@ -504,11 +504,54 @@ function enforceDesktopRequirement() {
     }
 }
 
+// Load the full image set from the remote manifest so we don't hardcode thousands of URLs.
+async function loadImages() {
+    const res = await fetch(imageManifestUrl);
+    const manifest = await res.json();
+    const files = Array.isArray(manifest.files) ? manifest.files : [];
+    const base = manifest.baseUrl || "";
+    return files.map(function(name){
+        return name && name.startsWith("http") ? name : base + name;
+    });
+}
+
+function ensureImagesLoaded(){
+    if (!imageLoadPromise){
+        imageLoadPromise = loadImages().then(function(list){
+            var pool = list ? list.slice() : [];
+            if (pool.length > maxExperimentImages){
+                pool = shuffleArray(pool).slice(0, maxExperimentImages);
+            }
+            images = pool;
+            allImagesCatalog = images.slice();
+            console.log("Loaded " + images.length + " images from manifest (capped to " + maxExperimentImages + ").");
+            return images;
+        }).catch(function(err){
+            console.error("Failed to load image manifest", err);
+            images = [];
+            allImagesCatalog = [];
+            return [];
+        });
+    }
+    return imageLoadPromise;
+}
+
+async function requireImagesReady(){
+    await ensureImagesLoaded();
+    if (!images.length){
+        throw new Error("No images loaded from manifest");
+    }
+    return images;
+}
+
 // parameters set by the experimenter
 var fixation_address = "http://www.wilmabainbridge.com/datasets/memorabilitycollector/fixation.jpg";
-var images = new Array("https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111290/text10_znc0jk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text8_y2toyy.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text6_vpawfh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text7_zvkpuc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111289/text9_tzi3hz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text3_afetxx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text4_vylzcd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text2_cqkf6r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/text1_avjjsj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface9_izqjqz.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111288/text5_aqxpnr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111287/surface10_b02unk.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111286/surface8_szl2lb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111284/surface7_nwdz2e.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface4_yi2ngr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface6_relhbw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111283/surface5_matvpr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface3_jxvtjf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface2_uwmqh1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111282/surface1_e1c1zi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111281/point10_hj2b5x.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point8_ypfykh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point9_j5yiic.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point7_ka9dgx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point6_gu6vyw.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111280/point5_ednd55.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point4_xetcvh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111278/point3_d9rozu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink10_asekig.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point2_oiayvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/point1_d98lcb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111277/nodelink9_uzdh5b.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111276/nodelink8_a6dbvd.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink7_qkqbpi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink6_opfusg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111275/nodelink5_s31tla.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink4_m3oky1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111274/nodelink3_exlfzl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink2_vb0vff.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line10_utszkf.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111273/nodelink1_ycuc0d.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line9_sijrvb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line8_t93zzj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111272/line7_lxmnz9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line6_tq0ief.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line5_sb163r.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line4_iqhekn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111270/line3_sqis4w.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111269/line2_bpagix.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid10_napfww.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid8_keyxfp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/line1_day5yn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111268/grid9_od8uj9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid7_ormde1.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid6_j1e9sp.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid3_wf3wn2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111266/grid5_ti7ut6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph10_fcmvcr.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid4_if2k6n.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/glyph8_fxsral.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid2_v55hqx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111265/grid1_efaryh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph9_hkhcim.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111263/glyph7_h7f8tj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph6_w6vxxh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph5_kgt1vt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph3_pghnuh.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111262/glyph4_wskbsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph2_tqtbwl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111261/glyph1_dfxi4p.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111260/color10_yiq9ov.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color8_wtraks.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color9_lfg9xx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111259/color7_clqmwn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color5_kyavlx.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111258/color6_e4e6i2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color1_f2iead.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar10_wsbahb.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar5_fhwday.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color3_pjmg6s.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111257/color4_znonfg.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/bar9_u2ba82.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111256/color2_qm9eyc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar8_jnzovj.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar7_tzacsu.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar4_nsb0pt.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area6_r5fivi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111255/bar6_nksyxa.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar2_hggvkn.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/area10_rnnsx2.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar3_qfh4yl.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111254/bar1_vhudoq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area7_rjswg9.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111253/area9_rqbel4.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area8_ggkuss.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111252/area4_o4rtbi.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area3_w9nmgq.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area5_smohfc.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area2_ge4gp6.png", "https://res.cloudinary.com/dtthoqqbw/image/upload/v1760111251/area1_fvkfyw.png");
-
-var allImagesCatalog = images.slice();
+var imageManifestUrl = "https://ivcl.jiangsn.com/ieee_vis_images/manifest.json";
+var images = [];
+var allImagesCatalog = [];
+var imageLoadPromise = null;
+var maxExperimentImages = 120;
+var targetProportion = 0.30;
 var complexityPair = [];
 var preSurveyResponses = {
     workerId: "",
@@ -702,7 +745,20 @@ function buildPretrainSequence() {
     console.log("Pretrain sequence built:", pretrainSequence.length, "images");
 }
 
-function showPreSurvey(){
+async function showPreSurvey(){
+    try {
+        await requireImagesReady();
+    } catch (e){
+        console.error(e);
+        var errorView = `
+            <section class="card">
+                <h1 class="section-title">Unable to load images</h1>
+                <p class="lead-text">The image manifest could not be loaded. Please check your network connection and refresh the page.</p>
+            </section>
+        `;
+        document.body.innerHTML = renderShell(errorView);
+        return;
+    }
     complexityPair = pickRandomImagePair();
     var content = `
         <section class="card">
@@ -1098,9 +1154,15 @@ document.addEventListener('keydown', function(event) {
 });
 
 // preload and then start
-function buttonPress(){
+async function buttonPress(){
 	document.getElementById("startbutton").innerHTML = "Experiment Running...";
 	document.getElementById("startbutton").disabled = true;
+	await ensureImagesLoaded();
+	if (!images.length){
+		document.getElementById("performancerecord").innerHTML = "Unable to load images from the manifest. Please refresh and try again.";
+		document.getElementById("startbutton").disabled = false;
+		return;
+	}
 	preloadEverything();
 	document.getElementById("performancerecord").innerHTML = "Press the <b>SPACE BAR</b> to start. If it doesn't work, make sure to click in this browser window first.";
 }
@@ -1525,19 +1587,13 @@ function makeImSequence(){
 function calculateProps(){
 	var trialtime = stimtime + isi;
 	trialsBetTargets = Math.floor(delayBetTargets*1000 / trialtime);
-	var B = trialsBetTargets;
-	var S = delayBetVigilance;
-	var C = images.length;
-	
-	numfoils = (S-1 + (S-2)*(C+(B/S)-1)-(B/S))/(S-1);
-	numtargets = C - numfoils;
-	
-	numfoils = Math.floor(numfoils);
-	numtargets = Math.ceil(numtargets);
+	var totalImages = images.length;
+	numtargets = Math.max(1, Math.round(totalImages * targetProportion));
+	numfoils = Math.max(0, totalImages - numtargets);
 	
 	trialsBetweenBreaks = Math.ceil(timeBetweenBreaks*1000/trialtime);
 	
-	console.log("Calculated the proportions of images.");
+	console.log("Calculated fixed proportions: " + numtargets + " targets and " + numfoils + " fillers out of " + totalImages + " images.");
 }
 
 // calculate the total pay for the whole study
@@ -1698,6 +1754,7 @@ var pid = '';
 <script>
 	document.addEventListener('DOMContentLoaded', function(){
 		enforceDesktopRequirement();
+		ensureImagesLoaded();
 		if (!deviceCompatible){
 			return;
 		}
@@ -1705,12 +1762,13 @@ var pid = '';
 		if (!form){
 			return;
 		}
-		form.onsubmit = function(e) {
+		form.onsubmit = async function(e) {
 			e.preventDefault();
 			enforceDesktopRequirement();
 			if (!deviceCompatible){
 				return;
 			}
+			await ensureImagesLoaded();
 			pid = document.getElementById('prolific-id-input').value.trim();
 			if(pid) {
 				document.getElementById('splash').style.display = 'none';
