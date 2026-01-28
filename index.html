@@ -452,13 +452,13 @@ function imageLabelFromUrl(url){
 }
 
 function pickRandomImagePair(){
-    var pool = allImagesCatalog.slice();
+    var pool = (allImagesCatalog && allImagesCatalog.length ? allImagesCatalog : sessionImagesCatalog).slice();
     shuffleArray(pool);
     return pool.slice(0, 2);
 }
 
 function sampleImagesForPost(count){
-    var pool = (images && images.length ? images : allImagesCatalog).slice();
+    var pool = (sessionImagesCatalog && sessionImagesCatalog.length ? sessionImagesCatalog : (images && images.length ? images : allImagesCatalog)).slice();
     shuffleArray(pool);
     return pool.slice(0, Math.min(count, pool.length));
 }
@@ -504,33 +504,99 @@ function enforceDesktopRequirement() {
     }
 }
 
-// Load the full image set from the remote manifest so we don't hardcode thousands of URLs.
-async function loadImages() {
-    const res = await fetch(imageManifestUrl);
-    const manifest = await res.json();
-    const files = Array.isArray(manifest.files) ? manifest.files : [];
-    const base = manifest.baseUrl || "";
-    return files.map(function(name){
-        return name && name.startsWith("http") ? name : base + name;
+// Load and parse the manifest so we can use fixed datasets per level.
+async function loadManifest() {
+    try {
+        const res = await fetch(imageManifestUrl);
+        if (!res.ok){
+            throw new Error("Manifest HTTP " + res.status);
+        }
+        const manifest = await res.json();
+        const files = Array.isArray(manifest.files) ? manifest.files : [];
+        const base = manifest.baseUrl || "";
+        return { files: files, base: base };
+    } catch (err) {
+        if (!manifestFallbackUrl){
+            throw err;
+        }
+        console.warn("Remote manifest failed, trying fallback:", manifestFallbackUrl, err);
+        const res = await fetch(manifestFallbackUrl);
+        if (!res.ok){
+            throw new Error("Fallback manifest HTTP " + res.status);
+        }
+        const manifest = await res.json();
+        const files = Array.isArray(manifest.files) ? manifest.files : [];
+        const base = manifest.baseUrl || "";
+        return { files: files, base: base };
+    }
+}
+
+function resolveManifestUrl(base, name){
+    if (!name){
+        return "";
+    }
+    return name.startsWith("http") ? name : base + name;
+}
+
+function parseManifest(manifest){
+    var data = {
+        pretest: [],
+        levels: {}
+    };
+    var files = manifest.files || [];
+    var base = manifest.baseUrl || manifest.base || "";
+    files.forEach(function(name){
+        if (!name){
+            return;
+        }
+        var url = resolveManifestUrl(base, name);
+        var pretestMatch = name.match(/^P\d+/i);
+        if (pretestMatch){
+            data.pretest.push(url);
+            return;
+        }
+        var levelMatch = name.match(/^L(\d+)_([TFV])\d+/i);
+        if (!levelMatch){
+            return;
+        }
+        var level = levelMatch[1];
+        var kind = levelMatch[2].toUpperCase();
+        if (!data.levels[level]){
+            data.levels[level] = { targets: [], fillers: [], vigilance: [] };
+        }
+        if (kind === "T"){
+            data.levels[level].targets.push(url);
+        } else if (kind === "F"){
+            data.levels[level].fillers.push(url);
+        } else if (kind === "V"){
+            data.levels[level].vigilance.push(url);
+        }
     });
+    return data;
 }
 
 function ensureImagesLoaded(){
     if (!imageLoadPromise){
-        imageLoadPromise = loadImages().then(function(list){
-            var pool = list ? list.slice() : [];
-            if (pool.length > maxExperimentImages){
-                pool = shuffleArray(pool).slice(0, maxExperimentImages);
-            }
-            images = pool;
-            allImagesCatalog = images.slice();
-            console.log("Loaded " + images.length + " images from manifest (capped to " + maxExperimentImages + ").");
-            return images;
+        imageLoadPromise = loadManifest().then(function(manifest){
+            manifestData = parseManifest(manifest);
+            pretestImages = (manifestData.pretest || []).slice();
+            availableLevels = Object.keys(manifestData.levels).sort();
+            allImagesCatalog = [];
+            availableLevels.forEach(function(levelKey){
+                var level = manifestData.levels[levelKey];
+                if (level){
+                    allImagesCatalog = allImagesCatalog.concat(level.targets, level.fillers, level.vigilance);
+                }
+            });
+            console.log("Loaded manifest with", pretestImages.length, "pretest images and", availableLevels.length, "levels.");
+            return manifestData;
         }).catch(function(err){
             console.error("Failed to load image manifest", err);
-            images = [];
+            manifestData = null;
+            pretestImages = [];
+            availableLevels = [];
             allImagesCatalog = [];
-            return [];
+            return null;
         });
     }
     return imageLoadPromise;
@@ -538,19 +604,25 @@ function ensureImagesLoaded(){
 
 async function requireImagesReady(){
     await ensureImagesLoaded();
-    if (!images.length){
-        throw new Error("No images loaded from manifest");
+    if (!manifestData || !availableLevels.length){
+        throw new Error("No manifest data loaded");
     }
-    return images;
+    return manifestData;
 }
 
 // parameters set by the experimenter
 var fixation_address = "http://www.wilmabainbridge.com/datasets/memorabilitycollector/fixation.jpg";
-var imageManifestUrl = "https://ivcl.jiangsn.com/ieee_vis_images/vis240/manifest.json";
+var imageManifestUrl = "https://ivcl.jiangsn.com/vis240game/240/manifest.json";
+var manifestFallbackUrl = "manifest.json";
 var images = [];
 var allImagesCatalog = [];
 var imageLoadPromise = null;
-var maxExperimentImages = 120;
+var manifestData = null;
+var pretestImages = [];
+var availableLevels = [];
+var completedLevels = [];
+var currentLevelKey = "";
+var sessionImagesCatalog = [];
 var targetProportion = 0.30;
 var complexityPair = [];
 var preSurveyResponses = {
@@ -576,8 +648,10 @@ var postSurveyVisible = false;
 var endingStatus = "";
 var stimtime = 2000; // in milliseconds
 var isi = 1200; // in milliseconds
-var delayBetTargets = 120; // in seconds
-var delayBetVigilance = 5; // in trials. The size of image blocks
+var levelTrialCount = 120; // fixed presentations per level
+var targetRepeatDelayMin = 91;
+var targetRepeatDelayMax = 109;
+var vigilanceRepeatMaxGap = 7;
 var keytoWatch = "space"; // use space bar for responses
 var subsperim = 40; // how many subjects you want per image
 var payperhour = 5; // how much money you want to pay per hour
@@ -599,7 +673,7 @@ var breakTimeRemaining = 0;
 var breakResumeTimeout = null;
 
 // Pretrain variables
-var pretrainImages = []; // Will store indices of images used for pretrain
+var pretrainImages = []; // Will store URLs of images used for pretrain
 var pretrainSequence = []; // Full pretrain sequence with repeats
 var pretrainTypeSequence = []; // Type of each pretrain trial
 var pretrainPerfSequence = []; // Performance for pretrain
@@ -611,11 +685,9 @@ var pretrainFalseAlarms = 0;
 var pretrainCorrectRejections = 0;
 
 // global variables that are calculated later based on parameters
-var trialsBetTargets = 30; // in num trials
 var numfoils = 0;
 var numtargets = 0;
 var numtotalsubs = 0;
-var allc = 0; // overall sequence counter when building the sequence
 var experimentlength = 0;
 var paypersub = 0;
 var totalpay = 0;
@@ -662,45 +734,11 @@ const CORRECTREJECTION = 14;
 
 /****************************************Functions*****************************************/
 
-// Select pretrain images - 15 images, sampling from each category
+// Select pretrain images from the fixed pretest dataset
 function selectPretrainImages() {
-    // Image categories (10 of each type)
-    var categories = [
-        {name: 'text', start: 0, end: 10},
-        {name: 'surface', start: 10, end: 20},
-        {name: 'point', start: 20, end: 30},
-        {name: 'nodelink', start: 30, end: 40},
-        {name: 'line', start: 40, end: 50},
-        {name: 'grid', start: 50, end: 60},
-        {name: 'glyph', start: 60, end: 70},
-        {name: 'color', start: 70, end: 80},
-        {name: 'bar', start: 80, end: 90},
-        {name: 'area', start: 90, end: 100}
-    ];
-    
-    var selected = [];
-    
-    // Sample 1-2 images from each category to get 15 total
-    // First pass: take 1 from each (10 images)
-    for (var i = 0; i < categories.length; i++) {
-        var cat = categories[i];
-        var randomIndex = cat.start + Math.floor(Math.random() * (cat.end - cat.start));
-        selected.push(randomIndex);
-    }
-    
-    // Second pass: randomly take 5 more from random categories
-    for (var i = 0; i < 5; i++) {
-        var randomCat = categories[Math.floor(Math.random() * categories.length)];
-        var randomIndex = randomCat.start + Math.floor(Math.random() * (randomCat.end - randomCat.start));
-        // Make sure we don't duplicate
-        if (selected.indexOf(randomIndex) === -1) {
-            selected.push(randomIndex);
-        } else {
-            i--; // Try again
-        }
-    }
-    
-    return selected;
+    var pool = pretestImages.slice();
+    shuffleArray(pool);
+    return pool.slice(0, Math.min(15, pool.length));
 }
 
 // Build pretrain sequence with repeats
@@ -936,7 +974,7 @@ function animatePretrainSequence() {
     
     if (isImage) {
         var imgIndex = Math.floor(pretrainImCount / 2);
-        document.getElementById("stimulus").src = images[pretrainSequence[imgIndex]];
+        document.getElementById("stimulus").src = pretrainSequence[imgIndex];
         setTimeout("animatePretrainSequence()", stimtime);
     } else {
         document.getElementById("stimulus").src = fixation_address;
@@ -1060,23 +1098,17 @@ function showPretrainResults() {
 	document.body.innerHTML = renderShell(summaryView);
 }
 
-// Start real experiment
-function startRealExperiment() {
-	inPretrainMode = false;
-	stopExperimentTimer();
-	experimentStartTimestamp = null;
-    
-    // Remove pretrain images from the main image array
-    var newImages = [];
-    for (var i = 0; i < images.length; i++) {
-        if (pretrainImages.indexOf(i) === -1) {
-            newImages.push(images[i]);
-        }
-    }
-    images = newImages;
-    
-	console.log("Starting real experiment with", images.length, "images");
-	
+function getNextLevelKey(){
+	for (var i = 0; i < availableLevels.length; i++){
+		if (completedLevels.indexOf(availableLevels[i]) === -1){
+			return availableLevels[i];
+		}
+	}
+	return "";
+}
+
+function renderExperimentInterface(levelKey){
+	var levelLabel = levelKey ? ("Level " + levelKey) : "Level";
 	var interfaceView = `
 		<form id="form" class="card" autocomplete="off">
 			<input type="hidden" name="imseq" id="imseqout" value="">
@@ -1084,7 +1116,7 @@ function startRealExperiment() {
 			<input type="hidden" name="perfseq" id="perfseqout" value="">
 			<input type="hidden" name="ending" id="endingout" value="">
 
-			<h1 class="section-title">Visual Memorability Assessment</h1>
+			<h1 class="section-title">Visual Memorability Assessment • ${levelLabel}</h1>
 			<p class="lead-text">
 				Press the <strong>SPACE BAR</strong> whenever you detect an exact repeat of a visualization in this <strong>current game</strong>.
 				Images from the practice block have been removed and will not appear here. Avoid responses during fixation intervals.
@@ -1126,6 +1158,33 @@ function startRealExperiment() {
 	updateExperimentProgress();
 }
 
+function startLevel(levelKey){
+	setCurrentLevel(levelKey);
+	renderExperimentInterface(levelKey);
+}
+
+// Start real experiment
+function startRealExperiment() {
+	inPretrainMode = false;
+	stopExperimentTimer();
+	experimentStartTimestamp = null;
+	completedLevels = [];
+	sessionImagesCatalog = [];
+	imgstring = "";
+	imtypestring = "";
+	perfstring = "";
+	falsealarmcounts = 0;
+	vigilancefails = 0;
+	kickedOut = 0;
+    
+    console.log("Starting real experiment with level images.");
+	var nextLevel = getNextLevelKey();
+	if (!nextLevel){
+		document.body.innerHTML = renderShell("<section class='card'><h1 class='section-title'>No levels available</h1><p class='lead-text'>The manifest did not include any level images.</p></section>");
+		return;
+	}
+	startLevel(nextLevel);
+}
 // key press listener
 document.onkeydown = function(key){ 
 	if (!deviceCompatible){
@@ -1158,10 +1217,16 @@ async function buttonPress(){
 	document.getElementById("startbutton").innerHTML = "Experiment Running...";
 	document.getElementById("startbutton").disabled = true;
 	await ensureImagesLoaded();
-	if (!images.length){
+	if (!manifestData || !availableLevels.length){
 		document.getElementById("performancerecord").innerHTML = "Unable to load images from the manifest. Please refresh and try again.";
 		document.getElementById("startbutton").disabled = false;
 		return;
+	}
+	if (!currentLevelKey){
+		var nextLevel = getNextLevelKey();
+		if (nextLevel){
+			setCurrentLevel(nextLevel);
+		}
 	}
 	preloadEverything();
 	document.getElementById("performancerecord").innerHTML = "Press the <b>SPACE BAR</b> to start. If it doesn't work, make sure to click in this browser window first.";
@@ -1196,7 +1261,39 @@ function animateSequence(){
 }
 
 // preload and calculate everything
+function resetLevelState(){
+	fullsequence = [];
+	timesequence = [];
+	typesequence = [];
+	perfsequence = [];
+	imtypeseq = [];
+	allimgseq = [];
+	performanceseq = [];
+	imCount = -1;
+	breakCounter = 0;
+	onBreak = false;
+	experimentStartTimestamp = null;
+	totalExperimentDuration = 0;
+}
+
+function addToSessionCatalog(list){
+	list.forEach(function(url){
+		if (sessionImagesCatalog.indexOf(url) === -1){
+			sessionImagesCatalog.push(url);
+		}
+	});
+}
+
+function setCurrentLevel(levelKey){
+	currentLevelKey = levelKey;
+	var level = manifestData.levels[levelKey];
+	images = level.targets.concat(level.fillers, level.vigilance);
+	allImagesCatalog = images.slice();
+	addToSessionCatalog(images);
+}
+
 function preloadEverything() {
+	resetLevelState();
 	calculateProps();
 	makeImSequence();
 	calculateTotalPay();
@@ -1252,7 +1349,7 @@ function buildFullSequence(){
 	var i = 0;
 	var imcounter = 0;
 	while (i < imtypeseq.length*2){
-		fullsequence[i] = images[allimgseq[imcounter]];
+		fullsequence[i] = allimgseq[imcounter];
 		typesequence[i] = imtypeseq[imcounter];
 		timesequence[i] = stimtime;
 		perfsequence[i] = performanceseq[imcounter];
@@ -1483,9 +1580,43 @@ function showFailure(){
 	showPostSurvey();
 }
 
+function showLevelTransition(nextLevel){
+	var levelLabel = nextLevel ? ("Level " + nextLevel) : "Next Level";
+	var content = `
+		<section class="card text-center">
+			<h1 class="section-title">Level Complete</h1>
+			<p class="lead-text">You finished the current level. Would you like to continue to ${levelLabel}?</p>
+			<div class="action-row">
+				<button class="primary-button" onclick="startLevel('${nextLevel}')">Start ${levelLabel}</button>
+				<button class="primary-button" style="margin-left:12px;" onclick="finishStudyEarly()">Finish Study</button>
+			</div>
+		</section>
+	`;
+	document.body.innerHTML = renderShell(content);
+}
+
+function finishStudyEarly(){
+	stopExperimentTimer();
+	experimentCompleted = true;
+	endingStatus = "completed";
+	var endingInput = document.getElementById("endingout");
+	if (endingInput){
+		endingInput.value = endingStatus;
+	}
+	showPostSurvey();
+}
+
 // end the game if they make it to the end!
 function showEnding(){
 	stopExperimentTimer();
+	if (completedLevels.indexOf(currentLevelKey) === -1){
+		completedLevels.push(currentLevelKey);
+	}
+	var nextLevel = getNextLevelKey();
+	if (nextLevel){
+		showLevelTransition(nextLevel);
+		return;
+	}
 	experimentCompleted = true;
 	endingStatus = "completed";
 	var endingInput = document.getElementById("endingout");
@@ -1497,103 +1628,175 @@ function showEnding(){
 }
 
 // create the memorability-based image sequence
-function makeImSequence(){
-	var allImArray = populateArray(0, images.length);
-	allImArray = shuffleArray(allImArray);
-	var targetIms = allImArray.slice(0, numtargets);
-	var fillerIms = allImArray.slice(numtargets, allImArray.length);
-	var imblock = [];
-	var typeblock = [];
-	var perfblock = [];
+function randomInt(min, max){
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-	targetIms = shuffleArray(targetIms);
-	repeatIms = shuffleArray(targetIms);
-	fillerIms = shuffleArray(fillerIms);
-	
-	tc = 0;
-	fc = 0;
-	ofbc = 0;
-	rc = 0;
-	allc = 0;
-	
-	oldfillblock = [];
-	
-	while (rc < repeatIms.length & fc < fillerIms.length){
-		var c = 0;
-		
-		if (tc < targetIms.length) {
-			imblock[c] = targetIms[tc]; 
-			typeblock[c] = TARGET;
-			perfblock[c] = CORRECTREJECTION;
-			tc++; c++; allc++;
-		} else {
-			imblock[c] = fillerIms[fc];
-			typeblock[c] = FILLER;
-			perfblock[c] = CORRECTREJECTION;
-			oldfillblock[ofbc] = fillerIms[fc];
-			c++; allc++; ofbc++; fc++;
+function findPairWithDelay(slots, minDelay, maxDelay){
+	for (var i = 0; i < slots.length; i++){
+		if (slots[i] !== null){
+			continue;
 		}
-	
-		if (oldfillblock.length > 0) {
-			oldfillblock = shuffleArray(oldfillblock);
-			imblock[c] = oldfillblock[0];
-			typeblock[c] = VIGILANCE;
-			perfblock[c] = MISS;
-			c++; allc++;
-			oldfillblock = []; ofbc = 0;
-		} else {
-			imblock[c] = fillerIms[fc];
-			typeblock[c] = FILLER;
-			perfblock[c] = CORRECTREJECTION;
-			oldfillblock[ofbc] = fillerIms[fc]; 
-			c++; allc++; ofbc++; fc++;
-		}
-	
-		if (allc > trialsBetTargets) {
-			imblock[c] = repeatIms[rc];
-			typeblock[c] = REPEAT;
-			perfblock[c] = MISS;
-			rc++; c++; allc++;
-		} else{
-			imblock[c] = fillerIms[fc];
-			typeblock[c] = FILLER;
-			perfblock[c] = CORRECTREJECTION;
-			oldfillblock[ofbc] = fillerIms[fc]; 
-			c++; allc++; ofbc++; fc++;
-		}
-	
-		for (var i = 0; i < delayBetVigilance-3; i++){
-			if (fc < fillerIms.length) {
-				imblock[c] = fillerIms[fc]; 
-				typeblock[c] = FILLER;
-				perfblock[c] = CORRECTREJECTION;
-				oldfillblock[ofbc] = fillerIms[fc];
-				c++; allc++; ofbc++; fc++;
+		for (var d = minDelay; d <= maxDelay; d++){
+			var j = i + d;
+			if (j < slots.length && slots[j] === null){
+				return [i, j];
 			}
 		}
-		
-		[imblock, typeblock, perfblock] = shuffleArrays([imblock, typeblock, perfblock]);
-		
-		allimgseq = allimgseq.concat(imblock);
-		imtypeseq = imtypeseq.concat(typeblock);
-		performanceseq = performanceseq.concat(perfblock);
-	
 	}
-	
-	console.log("Done making the image sequence!");
+	return null;
+}
+
+function findLargestGapPair(slots){
+	var open = [];
+	for (var i = 0; i < slots.length; i++){
+		if (slots[i] === null){
+			open.push(i);
+		}
+	}
+	if (open.length < 2){
+		return null;
+	}
+	var best = [open[0], open[1]];
+	var bestGap = best[1] - best[0];
+	for (var i = 0; i < open.length; i++){
+		for (var j = i + 1; j < open.length; j++){
+			var gap = open[j] - open[i];
+			if (gap > bestGap){
+				bestGap = gap;
+				best = [open[i], open[j]];
+			}
+		}
+	}
+	return best;
+}
+
+function placePair(slots, types, perf, item, firstType, secondType, minDelay, maxDelay, label){
+	var total = slots.length;
+	var placed = false;
+	for (var attempt = 0; attempt < 200; attempt++){
+		var delay = randomInt(minDelay, maxDelay);
+		var first = randomInt(0, Math.max(0, total - delay - 1));
+		var second = first + delay;
+		if (second < total && slots[first] === null && slots[second] === null){
+			slots[first] = item;
+			types[first] = firstType;
+			perf[first] = CORRECTREJECTION;
+			slots[second] = item;
+			types[second] = secondType;
+			perf[second] = MISS;
+			placed = true;
+			break;
+		}
+	}
+	if (!placed){
+		var pair = findPairWithDelay(slots, minDelay, maxDelay);
+		if (!pair){
+			pair = findLargestGapPair(slots);
+		}
+		if (!pair){
+			console.warn("Unable to place pair for", label);
+			return false;
+		}
+		var gap = pair[1] - pair[0];
+		if (gap < minDelay || gap > maxDelay){
+			console.warn("Placed", label, "with gap", gap, "outside preferred range", minDelay + "-" + maxDelay);
+		}
+		slots[pair[0]] = item;
+		types[pair[0]] = firstType;
+		perf[pair[0]] = CORRECTREJECTION;
+		slots[pair[1]] = item;
+		types[pair[1]] = secondType;
+		perf[pair[1]] = MISS;
+	}
+	return true;
+}
+
+function buildLevelSequence(levelKey){
+	var level = manifestData.levels[levelKey];
+	if (!level){
+		throw new Error("Missing level data for " + levelKey);
+	}
+	var targets = shuffleArray(level.targets.slice());
+	var fillers = shuffleArray(level.fillers.slice());
+	var vigilance = shuffleArray(level.vigilance.slice());
+	var totalSlots = levelTrialCount;
+	var targetOcc = targets.length * 2;
+	var vigilanceOcc = vigilance.length * 2;
+	var remaining = totalSlots - targetOcc - vigilanceOcc;
+	if (remaining < 0){
+		var maxVigilanceItems = Math.max(0, Math.floor((totalSlots - targetOcc) / 2));
+		console.warn("Too many vigilance items for fixed trial count; trimming to", maxVigilanceItems);
+		vigilance = vigilance.slice(0, maxVigilanceItems);
+		vigilanceOcc = vigilance.length * 2;
+		remaining = totalSlots - targetOcc - vigilanceOcc;
+	}
+	var fillerSingles = shuffleArray(fillers).slice(0, Math.max(0, remaining));
+	var slots = new Array(totalSlots).fill(null);
+	var types = new Array(totalSlots).fill(null);
+	var perf = new Array(totalSlots).fill(null);
+
+	targets.forEach(function(item, idx){
+		placePair(slots, types, perf, item, TARGET, REPEAT, targetRepeatDelayMin, targetRepeatDelayMax, "target " + (idx + 1));
+	});
+
+	vigilance.forEach(function(item, idx){
+		placePair(slots, types, perf, item, FILLER, VIGILANCE, 1, vigilanceRepeatMaxGap, "vigilance " + (idx + 1));
+	});
+
+	var fillerIndex = 0;
+	for (var i = 0; i < slots.length; i++){
+		if (slots[i] === null){
+			if (fillerIndex < fillerSingles.length){
+				slots[i] = fillerSingles[fillerIndex];
+				types[i] = FILLER;
+				perf[i] = CORRECTREJECTION;
+				fillerIndex++;
+			}
+		}
+	}
+
+	for (var j = 0; j < slots.length; j++){
+		if (slots[j] === null){
+			var fallback = fillers[(j + fillerIndex) % Math.max(1, fillers.length)];
+			slots[j] = fallback;
+			types[j] = FILLER;
+			perf[j] = CORRECTREJECTION;
+		}
+	}
+
+	var countSummary = { target: 0, repeat: 0, filler: 0, vigilance: 0 };
+	types.forEach(function(type){
+		if (type === TARGET){
+			countSummary.target++;
+		} else if (type === REPEAT){
+			countSummary.repeat++;
+		} else if (type === VIGILANCE){
+			countSummary.vigilance++;
+		} else if (type === FILLER){
+			countSummary.filler++;
+		}
+	});
+	console.log("Level", levelKey, "sequence counts:", countSummary);
+	return { sequence: slots, types: types, perf: perf };
+}
+
+function makeImSequence(){
+	var built = buildLevelSequence(currentLevelKey);
+	allimgseq = built.sequence.slice();
+	imtypeseq = built.types.slice();
+	performanceseq = built.perf.slice();
+	console.log("Done making the image sequence for level", currentLevelKey, "with", allimgseq.length, "trials.");
 }
 
 // calculate the proportions of targets and foils
 function calculateProps(){
 	var trialtime = stimtime + isi;
-	trialsBetTargets = Math.floor(delayBetTargets*1000 / trialtime);
-	var totalImages = images.length;
-	numtargets = Math.max(1, Math.round(totalImages * targetProportion));
-	numfoils = Math.max(0, totalImages - numtargets);
-	
-	trialsBetweenBreaks = Math.ceil(timeBetweenBreaks*1000/trialtime);
-	
-	console.log("Calculated fixed proportions: " + numtargets + " targets and " + numfoils + " fillers out of " + totalImages + " images.");
+	trialsBetweenBreaks = Math.ceil(timeBetweenBreaks * 1000 / trialtime);
+	var level = manifestData.levels[currentLevelKey] || { targets: [], fillers: [], vigilance: [] };
+	numtargets = level.targets.length;
+	numfoils = level.fillers.length;
+	console.log("Level", currentLevelKey, "targets:", numtargets, "fillers:", numfoils, "vigilance:", level.vigilance.length);
 }
 
 // calculate the total pay for the whole study
@@ -1601,7 +1804,7 @@ function calculateTotalPay(){
 	var proptargets = images.length / numtargets;
 	numtotalsubs = proptargets * subsperim;
 	
-	experimentlength = (allc * (stimtime + isi)/1000)/60;
+	experimentlength = (imtypeseq.length * (stimtime + isi)/1000)/60;
 	paypersub = experimentlength/60 * payperhour;
 	totalpay = paypersub * numtotalsubs;
 	
@@ -1609,7 +1812,7 @@ function calculateTotalPay(){
 }
 
 function reportVariables(){
-	var report = " With your " + images.length + " total images, if you want " + delayBetTargets + "s between target images,\n You will need " + numtargets + " targets and " + numfoils + " foils.\n This will result in an experiment that is " + experimentlength + "min long.\n To get " + subsperim + " subjects per target image, you will need " + numtotalsubs + " total subjects.\n At a rate of $" + payperhour + " per hour, each experiment will cost $" + paypersub + ",\n Or $" + totalpay + " for the whole study.";
+	var report = " With your " + images.length + " total images, and a target repeat delay of " + targetRepeatDelayMin + "-" + targetRepeatDelayMax + " images,\n You will need " + numtargets + " targets and " + numfoils + " foils.\n This will result in an experiment that is " + experimentlength + "min long.\n To get " + subsperim + " subjects per target image, you will need " + numtotalsubs + " total subjects.\n At a rate of $" + payperhour + " per hour, each experiment will cost $" + paypersub + ",\n Or $" + totalpay + " for the whole study.";
 	
 	console.log(report);
 }
