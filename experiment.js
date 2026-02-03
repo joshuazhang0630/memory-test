@@ -62,6 +62,9 @@ function showInstructions() {
             <p class="lead-text">
                 During this study you will evaluate visualizations and indicate when an image repeats <strong>within the current block</strong>.
             </p>
+            <div class="instruction-visual">
+                <img src="instruction.png" alt="Study workflow diagram">
+            </div>
             <ol class="instruction-list">
                 <li><strong>Attend carefully.</strong> Each visualization appears for 1 second followed by a fixation interval.</li>
                 <li><strong>Respond only to repeats.</strong> Press the <strong>SPACE BAR</strong> as soon as you recognize a repeated image in the active block.</li>
@@ -227,8 +230,9 @@ function showPretrainResults() {
         }
     }
     
-    var totalRepeats = 3;
+    var totalRepeats = pretrainTypeSequence.filter(function(t){ return t === REPEAT; }).length || 1;
     var accuracy = Math.round((pretrainHits / totalRepeats) * 100);
+    var passedPractice = (pretrainHits >= pretrainRequiredHits) && (pretrainFalseAlarms <= pretrainMaxFalseAlarms);
     
 	var summaryView = `
 		<section class="card">
@@ -251,12 +255,21 @@ function showPretrainResults() {
 				</div>
 			</div>
 			<p class="lead-text">
-				Respond only when the visualization is identical to one seen earlier within the <strong>current game</strong>, and continue using the <strong>SPACE BAR</strong> for every response.
+				Respond only when the visualization is identical to one seen earlier within the <strong>current sequence</strong>, and continue using the <strong>SPACE BAR</strong> for every response.
 				After you continue, all practice images are removed and do not influence the primary experiment.
 			</p>
+            ${passedPractice ? `
 			<div class="action-row">
 				<button class="primary-button" onclick="startRealExperiment()">Continue to Experiment</button>
 			</div>
+            ` : `
+            <p class="lead-text" style="color: var(--error);">
+                Practice needs more accuracy before advancing. Please detect at least ${pretrainRequiredHits} repeat${pretrainRequiredHits === 1 ? "" : "s"} and make no more than ${pretrainMaxFalseAlarms} false alarm${pretrainMaxFalseAlarms === 1 ? "" : "s"}.
+            </p>
+            <div class="action-row">
+                <button class="primary-button" onclick="buildPretrainSequence(); startPretrain();">Repeat Practice Block</button>
+            </div>
+            `}
 		</section>
 	`;
 	document.body.innerHTML = renderShell(summaryView);
@@ -283,8 +296,8 @@ function renderExperimentInterface(levelKey){
 
 			<h1 class="section-title">Visual Memorability Assessment • ${levelLabel}</h1>
 			<p class="lead-text">
-				Press the <strong>SPACE BAR</strong> whenever you detect an exact repeat of a visualization in this <strong>current game</strong>.
-				Images from the practice block have been removed and will not appear here. Avoid responses during fixation intervals.
+				Press the <strong>SPACE BAR</strong> whenever you detect an exact repeat of a visualization in this <strong>current sequence</strong>.
+				Images do not repeat between sequences. Images from the practice block have been removed and will not appear here. Avoid responses during fixation intervals.
 			</p>
 			<div class="stimulus-panel">
 				<div id="performancerecord" class="instruction-callout"></div>
@@ -292,7 +305,7 @@ function renderExperimentInterface(levelKey){
 					<img id="stimulus" src="${fixation_address}" alt="Stimulus image">
 				</div>
 			</div>
-			<p class="muted-text text-center">Post-study questions will appear automatically once the session ends.</p>
+			<p class="muted-text text-center">Post-sequence questions will appear automatically once the session ends.</p>
 		</form>
 	`;
 	document.body.innerHTML = renderShell(interfaceView);
@@ -301,7 +314,7 @@ function renderExperimentInterface(levelKey){
 	document.getElementById("form").onsubmit = function(e){
 		e.preventDefault();
 		if (!postSurveyVisible){
-			document.getElementById("performancerecord").innerHTML = "Please finish the experiment; post-study questions will appear automatically.";
+			document.getElementById("performancerecord").innerHTML = "Please finish the experiment; post-sequence questions will appear automatically.";
 		}
 	};
 	
@@ -677,7 +690,7 @@ function showPostSurvey(){
 			<input type="hidden" name="ending" id="endingout" value="">
 			<input type="hidden" name="post_image_options" id="post-image-options" value="">
 
-			<h1 class="section-title">Post-study questions</h1>
+			<h1 class="section-title">Post-sequence questions</h1>
 			<div class="question-block">
 				<label class="muted-text">Pick a picture you remember correctly from the game and tell us what helped you remember it. *</label>
 				<div class="image-pair">

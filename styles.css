@@ -115,6 +115,18 @@
             color: var(--dark-gray);
             margin-bottom: 8px;
         }
+        .instruction-visual {
+            margin: 16px 0 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .instruction-visual img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--card-border);
+            border-radius: 4px;
+            background: var(--white);
+        }
 
         .muted-text {
             color: var(--mid-gray);

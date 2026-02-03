@@ -123,6 +123,10 @@ var pretrainImages = []; // Will store URLs of images used for pretrain
 var pretrainSequence = []; // Full pretrain sequence with repeats
 var pretrainTypeSequence = []; // Type of each pretrain trial
 var pretrainPerfSequence = []; // Performance for pretrain
+
+// Practice pass criteria (tweak as needed)
+var pretrainRequiredHits = 2;
+var pretrainMaxFalseAlarms = 1;
 var inPretrainMode = false;
 var pretrainImCount = -1;
 var pretrainHits = 0;
