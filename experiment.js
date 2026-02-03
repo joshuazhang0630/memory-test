@@ -7,6 +7,15 @@ function selectPretrainImages() {
 // Build pretrain sequence with repeats
 function buildPretrainSequence() {
     pretrainImages = selectPretrainImages();
+
+    if (devFastMode) {
+        pretrainImages = pretrainImages.slice(0, Math.max(1, devPretrainUniqueCount));
+        pretrainSequence = pretrainImages.slice(0, Math.max(1, devPretrainTotalCount));
+        pretrainTypeSequence = pretrainSequence.map(function(){ return TARGET; });
+        pretrainPerfSequence = pretrainSequence.map(function(){ return CORRECTREJECTION; });
+        console.log("Pretrain sequence built (dev):", pretrainSequence.length, "images");
+        return;
+    }
     
     // Shuffle the pretrain images
     pretrainImages = shuffleArray(pretrainImages);
@@ -72,6 +81,15 @@ function showInstructions() {
         </section>
     `;
     document.body.innerHTML = renderShell(content);
+}
+
+// Dev helper: run a minimal end-to-end flow quickly
+function runFastFlow() {
+	devFastMode = true;
+	devPretrainUniqueCount = 1;
+	devPretrainTotalCount = 1;
+	devLevelTrialCount = 4;
+	showInstructions();
 }
 
 // Start pretrain
@@ -263,12 +281,18 @@ function renderExperimentInterface(levelKey){
 			<input type="hidden" name="perfseq" id="perfseqout" value="">
 			<input type="hidden" name="ending" id="endingout" value="">
 
+			<h1 class="section-title">Visual Memorability Assessment • ${levelLabel}</h1>
+			<p class="lead-text">
+				Press the <strong>SPACE BAR</strong> whenever you detect an exact repeat of a visualization in this <strong>current game</strong>.
+				Images from the practice block have been removed and will not appear here. Avoid responses during fixation intervals.
+			</p>
 			<div class="stimulus-panel">
 				<div id="performancerecord" class="instruction-callout"></div>
 				<div class="stimulus-frame">
 					<img id="stimulus" src="${fixation_address}" alt="Stimulus image">
 				</div>
 			</div>
+			<p class="muted-text text-center">Post-study questions will appear automatically once the session ends.</p>
 		</form>
 	`;
 	document.body.innerHTML = renderShell(interfaceView);
@@ -429,6 +453,9 @@ function setCurrentLevel(levelKey){
 
 function preloadEverything() {
 	resetLevelState();
+	if (devFastMode){
+		levelTrialCount = Math.max(2, devLevelTrialCount);
+	}
 	calculateProps();
 	makeImSequence();
 	calculateTotalPay();
@@ -683,8 +710,13 @@ function showPostSurvey(){
 	var postForm = document.getElementById("form");
 	if (postForm){
 		setEnglishValidationMessages(postForm);
-		postForm.onsubmit = function(e){
-			e.preventDefault();
+		var handlePostSubmit = function(e){
+			if (e){
+				e.preventDefault();
+			}
+			if (!postForm.reportValidity()){
+				return;
+			}
 			postSurveyResponses.rememberedImage = (document.querySelector("input[name='remembered-image']:checked") || {}).value || "";
 			postSurveyResponses.rememberFeatures = (document.getElementById("remember-features").value || "").trim();
 			postSurveyResponses.studyComments = (document.getElementById("study-comments").value || "").trim();
@@ -698,6 +730,11 @@ function showPostSurvey(){
 			`;
 			document.body.innerHTML = renderShell(thanks);
 		};
+		postForm.onsubmit = handlePostSubmit;
+		var submitButton = postForm.querySelector("button[type='submit']");
+		if (submitButton){
+			submitButton.addEventListener("click", handlePostSubmit);
+		}
 	}
 }
 
@@ -956,7 +993,7 @@ function reportVariables(){
 
 // save to the output variables the performance and sequence completed so far
 function saveProgress(){
-	if (imCount >= 0) {
+	if (imCount >= 0 && imCount < fullsequence.length && fullsequence[imCount]) {
 		var tempimg = fullsequence[imCount];
 		tempimg = tempimg.substring(tempimg.lastIndexOf("/")+1);
 		if (imCount > 0) {

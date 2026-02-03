@@ -73,7 +73,17 @@ function ensureImagesLoaded(){
         imageLoadPromise = loadManifest().then(function(manifest){
             manifestData = parseManifest(manifest);
             pretestImages = (manifestData.pretest || []).slice();
-            availableLevels = Object.keys(manifestData.levels).sort();
+            var baseLevels = Object.keys(manifestData.levels).sort();
+            if (baseLevels.length > 0){
+                var desiredLevels = ["1", "2", "3", "4", "5"];
+                desiredLevels.forEach(function(levelKey, index){
+                    var baseKey = baseLevels[index % baseLevels.length];
+                    manifestData.levels[levelKey] = manifestData.levels[baseKey];
+                });
+                availableLevels = desiredLevels.slice();
+            } else {
+                availableLevels = [];
+            }
             allImagesCatalog = [];
             availableLevels.forEach(function(levelKey){
                 var level = manifestData.levels[levelKey];

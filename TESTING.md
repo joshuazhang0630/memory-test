@@ -1,0 +1,63 @@
+﻿# Browser Test/Tune Commands
+
+## Quick Setup Helpers
+
+- Ensure images are loaded before starting a level:
+  - `await ensureImagesLoaded()`
+
+- If you see a device warning screen, call:
+  - `deviceCompatible = true;`
+
+## Skip/Jump Commands
+
+- Skip pre-survey (demographics) and go straight to instructions:
+  - `showInstructions()`
+
+- Skip instructions and go straight to pretrain (practice):
+  - `startPretrain()`
+
+- Skip pretrain and go straight to the real experiment:
+  - `startRealExperiment()`
+
+- Skip the first level and start the second level:
+  - `await ensureImagesLoaded()`
+  - `completedLevels = [availableLevels[0]];`
+  - `startLevel(availableLevels[1]);`
+
+- Jump directly to the post-study questionnaire:
+  - `showPostSurvey()`
+
+## Fast-Run Dev Mode 
+Use this to simulate the full flow with very short sequences.
+
+1. Enable fast mode and set counts:
+   - `devFastMode = true;`
+   - `devPretrainUniqueCount = 1;`
+   - `devPretrainTotalCount = 1;`
+   - `devLevelTrialCount = 4;` // 4 trials per level (2 images + fixations)
+
+2. Run the normal flow:
+   - Start from splash and proceed normally, or:
+   - `showInstructions()` -> `startPretrain()` -> `startRealExperiment()`
+
+3. Disable when done:
+   - `devFastMode = false;`
+
+## One-Command Fast Flow
+
+- `runFastFlow()`  
+  Sets fast mode and shows the instruction screen so you can click through practice and the real experiment quickly.
+
+## Notes
+
+- `startRealExperiment()` resets counters and then starts the next available level.
+- `startLevel(levelKey)` assumes images are loaded; use `await ensureImagesLoaded()` first.
+- `showPostSurvey()` works best after at least one trial; if you want to force it immediately, you can also set:
+  - `endingStatus = "completed"; showPostSurvey();`
+
+## Useful Globals
+
+- `availableLevels` — array of level IDs
+- `completedLevels` — array of completed level IDs
+- `currentLevelKey` — the current level ID
+- `inPretrainMode` — whether the practice block is active

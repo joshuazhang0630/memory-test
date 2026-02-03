@@ -165,6 +165,12 @@ var imgstring = "";
 var imtypestring = "";
 var perfstring = "";
 
+// Dev/test helpers (set in console)
+var devFastMode = false;
+var devPretrainUniqueCount = 1;
+var devPretrainTotalCount = 1;
+var devLevelTrialCount = 4;
+
 // ID constants for image type
 const FIXATION = 0;
 const TARGET = 1;
