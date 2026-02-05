@@ -86,7 +86,8 @@ var preSurveyResponses = {
 };
 var postSurveyResponses = {
     rememberedImage: "",
-    rememberFeatures: "",
+    rememberFeaturesA: "",
+    rememberFeaturesB: "",
     studyComments: ""
 };
 var experimentCompleted = false;
@@ -127,6 +128,8 @@ var pretrainPerfSequence = []; // Performance for pretrain
 // Practice pass criteria (tweak as needed)
 var pretrainRequiredHits = 2;
 var pretrainMaxFalseAlarms = 1;
+var pretrainFailCount = 0;
+var pretrainMaxAttempts = 2;
 var inPretrainMode = false;
 var pretrainImCount = -1;
 var pretrainHits = 0;

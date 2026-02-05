@@ -65,6 +65,9 @@ function showInstructions() {
             <div class="instruction-visual">
                 <img src="instruction.png" alt="Study workflow diagram">
             </div>
+            <p class="lead-text">
+                Workflow overview: in Phase 1, mark as many repeated images as you can. In Phase 2, you will evaluate the images you saw in the sequence(s).
+            </p>
             <ol class="instruction-list">
                 <li><strong>Attend carefully.</strong> Each visualization appears for 1 second followed by a fixation interval.</li>
                 <li><strong>Respond only to repeats.</strong> Press the <strong>SPACE BAR</strong> as soon as you recognize a repeated image in the active block.</li>
@@ -168,10 +171,18 @@ function showPretrainFeedback(type) {
 	}
 	feedback.innerHTML = `<span class="feedback-icon">${icon}</span><span>${message}</span>`;
 	
-	document.body.appendChild(feedback);
+    var practicePanel = document.querySelector('.stimulus-panel');
+    if (inPretrainMode && practicePanel){
+        feedback.classList.add('practice-feedback');
+        practicePanel.appendChild(feedback);
+    } else {
+        document.body.appendChild(feedback);
+    }
 	
     setTimeout(function() {
-        document.body.removeChild(feedback);
+        if (feedback.parentNode){
+            feedback.parentNode.removeChild(feedback);
+        }
     }, 1000);
 }
 
@@ -233,6 +244,26 @@ function showPretrainResults() {
     var totalRepeats = pretrainTypeSequence.filter(function(t){ return t === REPEAT; }).length || 1;
     var accuracy = Math.round((pretrainHits / totalRepeats) * 100);
     var passedPractice = (pretrainHits >= pretrainRequiredHits) && (pretrainFalseAlarms <= pretrainMaxFalseAlarms);
+    if (passedPractice){
+        pretrainFailCount = 0;
+    } else {
+        pretrainFailCount++;
+        if (pretrainFailCount >= pretrainMaxAttempts){
+            inPretrainMode = false;
+            endingStatus = "practice_failed";
+            experimentCompleted = true;
+            var failView = `
+                <section class="card">
+                    ${failuretext}
+                    <p class="lead-text">
+                        You did not pass the practice block after ${pretrainMaxAttempts} attempts. The test is now over.
+                    </p>
+                </section>
+            `;
+            document.body.innerHTML = renderShell(failView);
+            return;
+        }
+    }
     
 	var summaryView = `
 		<section class="card">
@@ -678,9 +709,18 @@ function showPostSurvey(){
 	postSurveyVisible = true;
 	saveProgress();
 	stopExperimentTimer();
-	var rememberedSample = sampleImagesForPost(4);
-	var rememberedHtml = rememberedSample.map(function(url){
-		return renderImageChoice(url, "remembered-image", url);
+	var rememberedSample = selectPostSurveyImages();
+	var rememberedHtml = rememberedSample.map(function(url, index){
+		var label = imageLabelFromUrl(url);
+		var textareaId = index === 0 ? "remember-features-a" : "remember-features-b";
+		var textareaName = index === 0 ? "remember_features_a" : "remember_features_b";
+		return `
+			<div class="image-choice">
+				<div><strong>${label}</strong></div>
+				<img src="${url}" alt="${label}">
+				<textarea id="${textareaId}" name="${textareaName}" class="textarea-field" required placeholder="Describe the feature(s) that helped you remember."></textarea>
+			</div>
+		`;
 	}).join("");
 	var content = `
 		<form id="form" class="card" autocomplete="off">
@@ -692,11 +732,11 @@ function showPostSurvey(){
 
 			<h1 class="section-title">Post-sequence questions</h1>
 			<div class="question-block">
-				<label class="muted-text">Pick a picture you remember correctly from the game and tell us what helped you remember it. *</label>
+				<label class="muted-text">Describe what features make each image memorable. *</label>
+                <p class="small-note">Example: “The bright red diagonal line and the clustered dots in the upper-left made it memorable.”</p>
 				<div class="image-pair">
 					${rememberedHtml}
 				</div>
-				<textarea id="remember-features" name="remember_features" class="textarea-field" required placeholder="Describe the feature(s) that helped you remember."></textarea>
 			</div>
 			<div class="question-block">
 				<label class="muted-text" for="study-comments">What comments do you have about the study?</label>
@@ -730,8 +770,9 @@ function showPostSurvey(){
 			if (!postForm.reportValidity()){
 				return;
 			}
-			postSurveyResponses.rememberedImage = (document.querySelector("input[name='remembered-image']:checked") || {}).value || "";
-			postSurveyResponses.rememberFeatures = (document.getElementById("remember-features").value || "").trim();
+			postSurveyResponses.rememberedImage = "";
+			postSurveyResponses.rememberFeaturesA = (document.getElementById("remember-features-a").value || "").trim();
+			postSurveyResponses.rememberFeaturesB = (document.getElementById("remember-features-b").value || "").trim();
 			postSurveyResponses.studyComments = (document.getElementById("study-comments").value || "").trim();
 			sendToSheets();
 			var thanks = `
@@ -749,6 +790,62 @@ function showPostSurvey(){
 			submitButton.addEventListener("click", handlePostSubmit);
 		}
 	}
+}
+
+function selectPostSurveyImages(){
+	var hitIndexes = {};
+	var missIndexes = {};
+	for (var i = 0; i < typesequence.length; i++){
+		var t = typesequence[i];
+		if (t === REPEAT || t === VIGILANCE){
+			if (perfsequence[i] === HIT){
+				hitIndexes[i] = true;
+			} else if (perfsequence[i] === MISS){
+				missIndexes[i] = true;
+			}
+		}
+	}
+	for (var j = 1; j < typesequence.length; j++){
+		if (typesequence[j] === FIXATION && perfsequence[j] === HIT){
+			var prevType = typesequence[j - 1];
+			if (prevType === REPEAT || prevType === VIGILANCE){
+				hitIndexes[j - 1] = true;
+				delete missIndexes[j - 1];
+			}
+		}
+	}
+
+	var hits = Object.keys(hitIndexes).map(function(key){
+		return fullsequence[Number(key)];
+	});
+	var misses = Object.keys(missIndexes).map(function(key){
+		return fullsequence[Number(key)];
+	});
+	shuffleArray(hits);
+	shuffleArray(misses);
+
+	var selection = [];
+	if (misses.length > 0){
+		selection.push(misses[0]);
+		if (hits.length > 0){
+			selection.push(hits.find(function(url){ return url !== misses[0]; }) || hits[0]);
+		} else if (misses.length > 1){
+			selection.push(misses[1]);
+		}
+	} else {
+		selection = hits.slice(0, 2);
+	}
+
+	if (selection.length < 2){
+		var pool = (sessionImagesCatalog && sessionImagesCatalog.length ? sessionImagesCatalog : (allImagesCatalog || [])).slice();
+		shuffleArray(pool);
+		for (var k = 0; k < pool.length && selection.length < 2; k++){
+			if (selection.indexOf(pool[k]) === -1){
+				selection.push(pool[k]);
+			}
+		}
+	}
+	return selection;
 }
 
 // visually show their failure!

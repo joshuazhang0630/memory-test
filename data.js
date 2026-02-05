@@ -75,12 +75,16 @@ function ensureImagesLoaded(){
             pretestImages = (manifestData.pretest || []).slice();
             var baseLevels = Object.keys(manifestData.levels).sort();
             if (baseLevels.length > 0){
-                var desiredLevels = ["1", "2", "3", "4", "5"];
-                desiredLevels.forEach(function(levelKey, index){
-                    var baseKey = baseLevels[index % baseLevels.length];
-                    manifestData.levels[levelKey] = manifestData.levels[baseKey];
-                });
-                availableLevels = desiredLevels.slice();
+                if (baseLevels.length >= 2){
+                    availableLevels = baseLevels.slice(0, 2);
+                } else {
+                    var desiredLevels = ["1", "2"];
+                    desiredLevels.forEach(function(levelKey, index){
+                        var baseKey = baseLevels[index % baseLevels.length];
+                        manifestData.levels[levelKey] = manifestData.levels[baseKey];
+                    });
+                    availableLevels = desiredLevels.slice();
+                }
             } else {
                 availableLevels = [];
             }

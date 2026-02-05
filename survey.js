@@ -22,8 +22,8 @@ async function showPreSurvey(){
                         <div id="required-message" style="color: #0099CC">Fields marked with a * are required.</div>
                     </div>
                     <div class="form-element" id="pcid-container">
-                        <span class="prompt-text spaced-right ">Please provide your worker ID if you come from a crowdsourcing platform:</span>
-                        <input type="text" id="pcid" name="pcid">
+                        <span class="prompt-text spaced-right "><span style="color: #0099CC">*</span> Please provide your participant ID:</span>
+                        <input type="text" id="pcid" name="participant_id" required>
                     </div>
                     <div class="form-element" id="retake-container">
                         <span class="prompt-text" style="color: #0099CC">* </span>
@@ -143,7 +143,8 @@ async function showPreSurvey(){
             if (!preForm.reportValidity()){
                 return;
             }
-            preSurveyResponses.workerId = (document.getElementById("pcid").value || "").trim();
+            pid = (document.getElementById("pcid").value || "").trim();
+            preSurveyResponses.workerId = pid;
             preSurveyResponses.takenBefore = document.getElementById("retake").value;
             preSurveyResponses.gender = genderSelections.join("|");
             preSurveyResponses.genderSelf = (document.getElementById("gendertext").value || "").trim();
@@ -186,7 +187,8 @@ function sendToSheets() {
         pre_complexity_image_a: preSurveyResponses.complexityImageA,
         pre_complexity_image_b: preSurveyResponses.complexityImageB,
         post_remembered_image: postSurveyResponses.rememberedImage,
-        post_remember_features: postSurveyResponses.rememberFeatures,
+        post_remember_features_a: postSurveyResponses.rememberFeaturesA,
+        post_remember_features_b: postSurveyResponses.rememberFeaturesB,
         post_study_comments: postSurveyResponses.studyComments
 	};
 	const appsURL = "https://script.google.com/macros/s/AKfycbwoVnAqV03kDx44YfwHrLuLtKyzOiyi4W51VmL-rfzitaE8nvCxek0D1CGKb96F60iz2g/exec";
