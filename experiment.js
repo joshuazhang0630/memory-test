@@ -372,11 +372,21 @@ function startRealExperiment() {
 	falsealarmcounts = 0;
 	vigilancefails = 0;
 	kickedOut = 0;
-    
-    console.log("Starting real experiment with level images.");
+    stopAfterLevel = "";
+    trialEventRows = [];
+
+    try {
+        initializeParticipantLevels(pid || "anon");
+    } catch (err){
+        console.error("Failed to initialize participant levels", err);
+        document.body.innerHTML = renderShell("<section class='card'><h1 class='section-title'>Unable to start experiment</h1><p class='lead-text'>Could not initialize participant-specific levels. Please refresh and try again.</p></section>");
+        return;
+    }
+
+    console.log("Starting real experiment with participant-specific levels.");
 	var nextLevel = getNextLevelKey();
 	if (!nextLevel){
-		document.body.innerHTML = renderShell("<section class='card'><h1 class='section-title'>No levels available</h1><p class='lead-text'>The manifest did not include any level images.</p></section>");
+		document.body.innerHTML = renderShell("<section class='card'><h1 class='section-title'>No levels available</h1><p class='lead-text'>No runtime levels were generated.</p></section>");
 		return;
 	}
 	startLevel(nextLevel);
@@ -881,7 +891,8 @@ function showLevelTransition(nextLevel){
 function finishStudyEarly(){
 	stopExperimentTimer();
 	experimentCompleted = true;
-	endingStatus = "completed";
+    stopAfterLevel = currentLevelKey || "";
+	endingStatus = "partial_complete";
 	var endingInput = document.getElementById("endingout");
 	if (endingInput){
 		endingInput.value = endingStatus;
@@ -1101,6 +1112,76 @@ function reportVariables(){
 	console.log(report);
 }
 
+function typeLabelFromId(typeId){
+    if (typeId === TARGET){ return "target_first"; }
+    if (typeId === REPEAT){ return "target_repeat"; }
+    if (typeId === FILLER){ return "filler_first"; }
+    if (typeId === VIGILANCE){ return "vigilance_repeat"; }
+    if (typeId === FIXATION){ return "fixation"; }
+    return "unknown";
+}
+
+function imageIdFromUrl(url){
+    var file = (url || "").split("/").pop() || "";
+    var dot = file.lastIndexOf(".");
+    return dot > 0 ? file.substring(0, dot) : file;
+}
+
+function collectTrialEvent(index){
+    if (index < 0 || index >= fullsequence.length){
+        return;
+    }
+    var typeId = typesequence[index];
+    if (typeId === FIXATION){
+        return;
+    }
+    var perf = perfsequence[index];
+    var row = {
+        event_type: "trial",
+        timestamp_iso: new Date().toISOString(),
+        user_id: pid || "",
+        participant_id: pid || "",
+        session_id: (pid || "anon") + "-" + (experimentStartTimestamp || Date.now()),
+        study_version: studyVersion || "vis-mem-v2",
+        level_index: Number(currentLevelKey || 0),
+        trial_index: index,
+        image_id: imageIdFromUrl(fullsequence[index]),
+        image_url: fullsequence[index],
+        trial_type: typeLabelFromId(typeId),
+        is_repeat: (typeId === REPEAT || typeId === VIGILANCE) ? 1 : 0,
+        expected_response: (typeId === REPEAT || typeId === VIGILANCE) ? 1 : 0,
+        participant_response: (perf === HIT || perf === FALSEALARM) ? 1 : 0,
+        is_correct: (perf === HIT || perf === CORRECTREJECTION) ? 1 : 0,
+        rt_ms: "",
+        repeat_lag: "",
+        vigilance_flag: (typeId === VIGILANCE) ? 1 : 0,
+        false_alarm_flag: (perf === FALSEALARM) ? 1 : 0,
+        hit_flag: (perf === HIT) ? 1 : 0,
+        miss_flag: (perf === MISS) ? 1 : 0,
+        quality_gate_status: kickedOut ? "failed" : "ok",
+        quality_gate_reason: kickedOut ? "threshold_exceeded" : "",
+        levels_completed: completedLevels.length,
+        stop_after_level: "",
+        pre_survey_submitted: preSurveyResponses && preSurveyResponses.workerId ? 1 : 0,
+        post_survey_submitted: 0,
+        pre_q1: preSurveyResponses.takenBefore || "",
+        pre_q2: preSurveyResponses.gender || "",
+        pre_q3: preSurveyResponses.age || "",
+        pre_q4: preSurveyResponses.education || "",
+        pre_q5: preSurveyResponses.complexVizDesc || "",
+        post_q1: "",
+        post_q2: "",
+        post_q3: "",
+        post_q4: "",
+        post_q5: "",
+        post_q6: "",
+        post_q7: "",
+        post_q8: "",
+        client_meta_json: ""
+    };
+    trialEventRows.push(row);
+}
+
 // save to the output variables the performance and sequence completed so far
 function saveProgress(){
 	if (imCount >= 0 && imCount < fullsequence.length && fullsequence[imCount]) {
@@ -1114,6 +1195,7 @@ function saveProgress(){
 		imgstring = imgstring + tempimg;
 		imtypestring = imtypestring + typesequence[imCount];
 		perfstring = perfstring + perfsequence[imCount];
+        collectTrialEvent(imCount);
 		document.getElementById("imseqout").value = imgstring;
 		document.getElementById("imtypeseqout").value = imtypestring;
 		document.getElementById("perfseqout").value = perfstring;

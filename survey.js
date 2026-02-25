@@ -167,12 +167,122 @@ async function showPreSurvey(){
 function sendToSheets() {
 	const form = document.getElementById('form');
     const formData = new FormData(form);
-    const data = {
-		prolific_id: pid,
-		imseq: imgstring,
+    const appsURL = "https://script.google.com/macros/s/AKfycbwoVnAqV03kDx44YfwHrLuLtKyzOiyi4W51VmL-rfzitaE8nvCxek0D1CGKb96F60iz2g/exec";
+
+    const baseMeta = {
+        user_id: pid,
+        participant_id: pid,
+        session_id: (pid || "anon") + "-" + (experimentStartTimestamp || Date.now()),
+        study_version: studyVersion || "vis-mem-v2",
+        levels_completed: completedLevels.length,
+        stop_after_level: stopAfterLevel || "",
+        pre_survey_submitted: preSurveyResponses && preSurveyResponses.workerId ? 1 : 0,
+        post_survey_submitted: 1,
+        pre_q1: preSurveyResponses.takenBefore || "",
+        pre_q2: preSurveyResponses.gender || "",
+        pre_q3: preSurveyResponses.age || "",
+        pre_q4: preSurveyResponses.education || "",
+        pre_q5: preSurveyResponses.complexVizDesc || "",
+        post_q1: postSurveyResponses.rememberFeaturesA || "",
+        post_q2: postSurveyResponses.rememberFeaturesB || "",
+        post_q3: postSurveyResponses.studyComments || "",
+        post_q4: "",
+        post_q5: "",
+        post_q6: "",
+        post_q7: "",
+        post_q8: ""
+    };
+
+    // finalize all trial rows with submission markers
+    const trialRows = (trialEventRows || []).map(function(row){
+        var merged = Object.assign({}, row);
+        merged.user_id = baseMeta.user_id;
+        merged.participant_id = baseMeta.participant_id;
+        merged.session_id = baseMeta.session_id;
+        merged.study_version = baseMeta.study_version;
+        merged.levels_completed = baseMeta.levels_completed;
+        merged.stop_after_level = baseMeta.stop_after_level;
+        merged.pre_survey_submitted = baseMeta.pre_survey_submitted;
+        merged.post_survey_submitted = 1;
+        merged.pre_q1 = baseMeta.pre_q1;
+        merged.pre_q2 = baseMeta.pre_q2;
+        merged.pre_q3 = baseMeta.pre_q3;
+        merged.pre_q4 = baseMeta.pre_q4;
+        merged.pre_q5 = baseMeta.pre_q5;
+        merged.client_meta_json = JSON.stringify({
+            vigilancefails: vigilancefails,
+            falsealarmcounts: falsealarmcounts,
+            ending: endingStatus || document.getElementById("endingout").value || "",
+            source: "trial"
+        });
+        return merged;
+    });
+
+    const summaryEvent = {
+        event_type: "session_end",
+        timestamp_iso: new Date().toISOString(),
+        user_id: baseMeta.user_id,
+        participant_id: baseMeta.participant_id,
+        session_id: baseMeta.session_id,
+        study_version: baseMeta.study_version,
+        level_index: completedLevels.length,
+        trial_index: "",
+        image_id: "",
+        image_url: "",
+        trial_type: "",
+        is_repeat: "",
+        expected_response: "",
+        participant_response: "",
+        is_correct: "",
+        rt_ms: "",
+        repeat_lag: "",
+        vigilance_flag: "",
+        false_alarm_flag: "",
+        hit_flag: "",
+        miss_flag: "",
+        quality_gate_status: kickedOut ? "failed" : "completed",
+        quality_gate_reason: kickedOut ? "threshold_exceeded" : "",
+        levels_completed: baseMeta.levels_completed,
+        stop_after_level: baseMeta.stop_after_level,
+        pre_survey_submitted: baseMeta.pre_survey_submitted,
+        post_survey_submitted: 1,
+        pre_q1: baseMeta.pre_q1,
+        pre_q2: baseMeta.pre_q2,
+        pre_q3: baseMeta.pre_q3,
+        pre_q4: baseMeta.pre_q4,
+        pre_q5: baseMeta.pre_q5,
+        post_q1: baseMeta.post_q1,
+        post_q2: baseMeta.post_q2,
+        post_q3: baseMeta.post_q3,
+        post_q4: baseMeta.post_q4,
+        post_q5: baseMeta.post_q5,
+        post_q6: baseMeta.post_q6,
+        post_q7: baseMeta.post_q7,
+        post_q8: baseMeta.post_q8,
+        client_meta_json: JSON.stringify({
+            imseq: imgstring,
+            imtypeseq: imtypestring,
+            perfseq: perfstring,
+            ending: endingStatus || document.getElementById("endingout").value || "",
+            vigilancefails: vigilancefails,
+            falsealarmcounts: falsealarmcounts,
+            pre_raw: preSurveyResponses,
+            post_raw: postSurveyResponses,
+            form_fields: Object.fromEntries(formData.entries())
+        })
+    };
+
+    const payload = {
+        spreadsheet_id: "19__35IVHmBkPm2zFMKrNoIY3QfmN0pSyEIYtCdOph6A",
+        worksheet_name: "工作表1",
+        schema_version: "v2",
+        rows: trialRows.concat([summaryEvent]),
+        // compatibility fields for existing apps script handlers
+        prolific_id: pid,
+        imseq: imgstring,
         imtypeseq: imtypestring,
         perfseq: perfstring,
-        ending: document.getElementById("endingout").value,
+        ending: endingStatus || document.getElementById("endingout").value || "",
         vigilancefails: vigilancefails,
         falsealarmcounts: falsealarmcounts,
         pre_worker_id: preSurveyResponses.workerId,
@@ -182,31 +292,18 @@ function sendToSheets() {
         pre_age: preSurveyResponses.age,
         pre_education: preSurveyResponses.education,
         pre_complex_viz_desc: preSurveyResponses.complexVizDesc,
-        pre_complex_viz_link: preSurveyResponses.complexVizLink,
-        pre_complexity_choice: preSurveyResponses.complexityChoice,
-        pre_complexity_image_a: preSurveyResponses.complexityImageA,
-        pre_complexity_image_b: preSurveyResponses.complexityImageB,
-        post_remembered_image: postSurveyResponses.rememberedImage,
         post_remember_features_a: postSurveyResponses.rememberFeaturesA,
         post_remember_features_b: postSurveyResponses.rememberFeaturesB,
         post_study_comments: postSurveyResponses.studyComments
-	};
-	const appsURL = "https://script.google.com/macros/s/AKfycbwoVnAqV03kDx44YfwHrLuLtKyzOiyi4W51VmL-rfzitaE8nvCxek0D1CGKb96F60iz2g/exec";
-    
-    for (let [key, value] of formData.entries()) {
-        data[key] = value;
-    }
+    };
 
-    data.vigilancefails = vigilancefails;
-    data.falsealarmcounts = falsealarmcounts;
-
-    console.log("data", data);
+    console.log("payload", payload);
 
     fetch(appsURL, {
         method: "POST",
-		mode: "no-cors",
+        mode: "no-cors",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
     }).then(() => {
         console.log("Data sent to Google Sheets!");
     }).catch(err => console.error("Error:", err));

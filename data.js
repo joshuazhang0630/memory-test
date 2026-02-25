@@ -1,104 +1,189 @@
-async function loadManifest() {
-    try {
-        const res = await fetch(imageManifestUrl);
-        if (!res.ok){
-            throw new Error("Manifest HTTP " + res.status);
-        }
-        const manifest = await res.json();
-        const files = Array.isArray(manifest.files) ? manifest.files : [];
-        const base = manifest.baseUrl || "";
-        return { files: files, base: base };
-    } catch (err) {
-        if (!manifestFallbackUrl){
-            throw err;
-        }
-        console.warn("Remote manifest failed, trying fallback:", manifestFallbackUrl, err);
-        const res = await fetch(manifestFallbackUrl);
-        if (!res.ok){
-            throw new Error("Fallback manifest HTTP " + res.status);
-        }
-        const manifest = await res.json();
-        const files = Array.isArray(manifest.files) ? manifest.files : [];
-        const base = manifest.baseUrl || "";
-        return { files: files, base: base };
+function normalizeBaseUrl(base){
+    if (!base){
+        return "";
     }
+    return base.endsWith("/") ? base : (base + "/");
+}
+
+async function fetchManifest(url){
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok){
+        throw new Error("Manifest HTTP " + res.status + " @ " + url);
+    }
+    const manifest = await res.json();
+    return {
+        sourceUrl: url,
+        baseUrl: normalizeBaseUrl(manifest.baseUrl || ""),
+        files: Array.isArray(manifest.files) ? manifest.files : []
+    };
+}
+
+async function loadManifests(){
+    const targetManifest = await fetchManifest(targetManifestUrl);
+    const fillerManifest = await fetchManifest(fillerManifestUrl);
+    return { targetManifest: targetManifest, fillerManifest: fillerManifest };
 }
 
 function resolveManifestUrl(base, name){
     if (!name){
         return "";
     }
-    return name.startsWith("http") ? name : base + name;
+    return name.startsWith("http") ? name : (normalizeBaseUrl(base) + name);
 }
 
-function parseManifest(manifest){
-    var data = {
+function basenameWithoutExt(path){
+    if (!path){
+        return "";
+    }
+    const base = path.split("/").pop() || path;
+    const dot = base.lastIndexOf(".");
+    return dot > 0 ? base.substring(0, dot) : base;
+}
+
+function buildGlobalRegistry(targetManifest, fillerManifest){
+    var registry = {
+        targets: [],
+        fillers: [],
         pretest: [],
-        levels: {}
+        byId: {}
     };
-    var files = manifest.files || [];
-    var base = manifest.baseUrl || manifest.base || "";
-    files.forEach(function(name){
-        if (!name){
+
+    function pushRecord(kind, fileName, baseUrl){
+        var url = resolveManifestUrl(baseUrl, fileName);
+        var imageId = basenameWithoutExt(fileName);
+        if (!imageId){
             return;
         }
-        var url = resolveManifestUrl(base, name);
-        var pretestMatch = name.match(/^P\d+/i);
-        if (pretestMatch){
-            data.pretest.push(url);
-            return;
+        if (registry.byId[imageId]){
+            // keep strict uniqueness by id
+            var disambiguated = imageId + "__" + kind + "__" + (Object.keys(registry.byId).length + 1);
+            imageId = disambiguated;
         }
-        var levelMatch = name.match(/^L(\d+)_([TFV])\d+/i);
-        if (!levelMatch){
-            return;
+        var rec = {
+            imageId: imageId,
+            fileName: fileName,
+            url: url,
+            role: kind
+        };
+        registry.byId[imageId] = rec;
+        if (kind === "target"){
+            registry.targets.push(rec);
+        } else {
+            registry.fillers.push(rec);
         }
-        var level = levelMatch[1];
-        var kind = levelMatch[2].toUpperCase();
-        if (!data.levels[level]){
-            data.levels[level] = { targets: [], fillers: [], vigilance: [] };
-        }
-        if (kind === "T"){
-            data.levels[level].targets.push(url);
-        } else if (kind === "F"){
-            data.levels[level].fillers.push(url);
-        } else if (kind === "V"){
-            data.levels[level].vigilance.push(url);
-        }
+    }
+
+    targetManifest.files.forEach(function(name){ pushRecord("target", name, targetManifest.baseUrl); });
+    fillerManifest.files.forEach(function(name){ pushRecord("filler", name, fillerManifest.baseUrl); });
+
+    // pretest sample from fillers (stable deterministic slice)
+    registry.pretest = registry.fillers.slice(0, Math.min(60, registry.fillers.length)).map(function(rec){ return rec.url; });
+    return registry;
+}
+
+function hashString(str){
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++){
+        h ^= str.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return h >>> 0;
+}
+
+function makeSeededRng(seed){
+    var s = seed >>> 0;
+    return function(){
+        s += 0x6D2B79F5;
+        var t = s;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function shuffleWithRng(arr, rng){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--){
+        var j = Math.floor(rng() * (i + 1));
+        var tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+    }
+    return a;
+}
+
+function splitIntoLevels(items, levelCount){
+    var levels = [];
+    for (var i = 0; i < levelCount; i++){
+        levels.push([]);
+    }
+    items.forEach(function(item, idx){
+        levels[idx % levelCount].push(item);
     });
-    return data;
+    return levels;
+}
+
+function initializeParticipantLevels(participantId){
+    if (!manifestData || !manifestData.registry){
+        throw new Error("Manifest registry not loaded");
+    }
+    var levelCount = activeLevelCount || 5;
+    var levelKeys = [];
+    for (var i = 1; i <= levelCount; i++){
+        levelKeys.push(String(i));
+    }
+
+    var seedInput = (participantId || "anon") + "|" + (studyVersion || "v1") + "|" + (studySalt || "salt");
+    var rng = makeSeededRng(hashString(seedInput));
+
+    var shuffledTargets = shuffleWithRng(manifestData.registry.targets, rng);
+    var shuffledFillers = shuffleWithRng(manifestData.registry.fillers, rng);
+
+    var targetBins = splitIntoLevels(shuffledTargets, levelCount);
+    var fillerBins = splitIntoLevels(shuffledFillers, levelCount);
+
+    var levels = {};
+    levelKeys.forEach(function(levelKey, idx){
+        var levelTargets = targetBins[idx].map(function(r){ return r.url; });
+        var levelFillers = fillerBins[idx].map(function(r){ return r.url; });
+        var vigCount = Math.max(8, Math.min(30, Math.floor(levelFillers.length * 0.12)));
+        var levelVigilance = levelFillers.slice(0, Math.min(vigCount, levelFillers.length));
+        levels[levelKey] = {
+            targets: levelTargets,
+            fillers: levelFillers,
+            vigilance: levelVigilance
+        };
+    });
+
+    manifestData.levels = levels;
+    availableLevels = levelKeys.slice();
+    allImagesCatalog = [];
+    availableLevels.forEach(function(levelKey){
+        var level = levels[levelKey];
+        allImagesCatalog = allImagesCatalog.concat(level.targets, level.fillers, level.vigilance);
+    });
+    return levels;
 }
 
 function ensureImagesLoaded(){
     if (!imageLoadPromise){
-        imageLoadPromise = loadManifest().then(function(manifest){
-            manifestData = parseManifest(manifest);
-            pretestImages = (manifestData.pretest || []).slice();
-            var baseLevels = Object.keys(manifestData.levels).sort();
-            if (baseLevels.length > 0){
-                if (baseLevels.length >= 2){
-                    availableLevels = baseLevels.slice(0, 2);
-                } else {
-                    var desiredLevels = ["1", "2"];
-                    desiredLevels.forEach(function(levelKey, index){
-                        var baseKey = baseLevels[index % baseLevels.length];
-                        manifestData.levels[levelKey] = manifestData.levels[baseKey];
-                    });
-                    availableLevels = desiredLevels.slice();
+        imageLoadPromise = loadManifests().then(function(payload){
+            var registry = buildGlobalRegistry(payload.targetManifest, payload.fillerManifest);
+            manifestData = {
+                registry: registry,
+                levels: {},
+                source: {
+                    targetManifest: payload.targetManifest.sourceUrl,
+                    fillerManifest: payload.fillerManifest.sourceUrl
                 }
-            } else {
-                availableLevels = [];
-            }
-            allImagesCatalog = [];
-            availableLevels.forEach(function(levelKey){
-                var level = manifestData.levels[levelKey];
-                if (level){
-                    allImagesCatalog = allImagesCatalog.concat(level.targets, level.fillers, level.vigilance);
-                }
-            });
-            console.log("Loaded manifest with", pretestImages.length, "pretest images and", availableLevels.length, "levels.");
+            };
+            pretestImages = registry.pretest.slice();
+            availableLevels = [];
+            allImagesCatalog = registry.targets.map(function(r){ return r.url; }).concat(registry.fillers.map(function(r){ return r.url; }));
+            console.log("Loaded manifests:", registry.targets.length, "targets", registry.fillers.length, "fillers");
             return manifestData;
         }).catch(function(err){
-            console.error("Failed to load image manifest", err);
+            console.error("Failed to load manifests", err);
             manifestData = null;
             pretestImages = [];
             availableLevels = [];
@@ -111,7 +196,7 @@ function ensureImagesLoaded(){
 
 async function requireImagesReady(){
     await ensureImagesLoaded();
-    if (!manifestData || !availableLevels.length){
+    if (!manifestData || !manifestData.registry){
         throw new Error("No manifest data loaded");
     }
     return manifestData;

@@ -58,8 +58,11 @@ Additional 2024 updates:
 
 
 var fixation_address = "http://www.wilmabainbridge.com/datasets/memorabilitycollector/fixation.jpg";
-var imageManifestUrl = "https://ivcl.jiangsn.com/vis240game/240/manifest.json";
-var manifestFallbackUrl = "manifest.json";
+var targetManifestUrl = "https://ivcl.jiangsn.com/visFullDataset/target/manifest.json";
+var fillerManifestUrl = "https://ivcl.jiangsn.com/visFullDataset/filler/manifest.json";
+var studyVersion = "vis-mem-v2";
+var studySalt = "solar-is-ship-ai";
+var activeLevelCount = 5;
 var images = [];
 var allImagesCatalog = [];
 var imageLoadPromise = null;
@@ -93,6 +96,7 @@ var postSurveyResponses = {
 var experimentCompleted = false;
 var postSurveyVisible = false;
 var endingStatus = "";
+var stopAfterLevel = "";
 var stimtime = 2000; // in milliseconds
 var isi = 1200; // in milliseconds
 var levelTrialCount = 120; // fixed presentations per level
@@ -171,6 +175,7 @@ var kickedOut = 0;
 var imgstring = "";
 var imtypestring = "";
 var perfstring = "";
+var trialEventRows = [];
 
 // Dev/test helpers (set in console)
 var devFastMode = false;
