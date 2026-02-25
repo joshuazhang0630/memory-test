@@ -140,7 +140,7 @@ function initializeParticipantLevels(participantId){
     var shuffledFillers = shuffleWithRng(manifestData.registry.fillers, rng);
 
     // Per-level design budget (must fit levelTrialCount and lag constraints)
-    var targetPairsPerLevel = 18; // => 36 slots (strict lag-fit margin)
+    var targetPairsPerLevel = 16; // => 32 slots (more robust strict lag-fit margin)
     var vigilancePairsPerLevel = 6; // => 12 slots
     var fillerSinglesPerLevel = Math.max(0, levelTrialCount - (targetPairsPerLevel * 2) - (vigilancePairsPerLevel * 2)); // default 72
 

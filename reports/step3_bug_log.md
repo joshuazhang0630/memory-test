@@ -22,6 +22,11 @@
 - **Impact:** false negatives (missed lag violations).
 - **Fix:** use explicit numeric constants in script and produce proper lag stats.
 
+## BL-004 (High) — Intermittent strict sequence build failure in live browser start
+- **Observed:** Starting real experiment could throw `Unable to build valid sequence for level 1 under strict constraints`.
+- **Impact:** Blocks participant progression after practice.
+- **Fix:** Increased strict build retry budget (80 -> 240) and reduced per-level target pair budget (18 -> 16) while preserving lag constraints.
+
 ## Post-fix status
 - `step3_constraints.json`: 0 overlap violations, 0 target lag violations, 0 vigilance lag violations, 0 null slots, 0 sequence build errors over 50 synthetic participants.
 - `step3_data_integrity.json`: Google Sheets schema read/write smoke checks passed.

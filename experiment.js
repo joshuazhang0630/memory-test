@@ -1101,7 +1101,7 @@ function buildLevelSequence(levelKey){
 		return { sequence: slots, types: types, perf: perf };
 	}
 
-	for (var tries = 0; tries < 80; tries++){
+	for (var tries = 0; tries < 240; tries++){
 		var built = tryBuildOnce();
 		if (built){
 			return built;
