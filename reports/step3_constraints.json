@@ -1,0 +1,60 @@
+{
+  "participants": 50,
+  "overlapViolations": 0,
+  "targetLagViolations": 0,
+  "vigilanceLagViolations": 0,
+  "nullSlotViolations": 0,
+  "sequenceBuildErrors": 0,
+  "samples": [
+    {
+      "participant": "p1",
+      "level": "1",
+      "targetLagMin": 91,
+      "targetLagMax": 106,
+      "vigilanceLagMin": 1,
+      "vigilanceLagMax": 5,
+      "badT": 0,
+      "badV": 0
+    },
+    {
+      "participant": "p1",
+      "level": "2",
+      "targetLagMin": 91,
+      "targetLagMax": 108,
+      "vigilanceLagMin": 1,
+      "vigilanceLagMax": 7,
+      "badT": 0,
+      "badV": 0
+    },
+    {
+      "participant": "p1",
+      "level": "3",
+      "targetLagMin": 91,
+      "targetLagMax": 109,
+      "vigilanceLagMin": 1,
+      "vigilanceLagMax": 7,
+      "badT": 0,
+      "badV": 0
+    },
+    {
+      "participant": "p1",
+      "level": "4",
+      "targetLagMin": 91,
+      "targetLagMax": 108,
+      "vigilanceLagMin": 1,
+      "vigilanceLagMax": 4,
+      "badT": 0,
+      "badV": 0
+    },
+    {
+      "participant": "p1",
+      "level": "5",
+      "targetLagMin": 92,
+      "targetLagMax": 108,
+      "vigilanceLagMin": 2,
+      "vigilanceLagMax": 6,
+      "badT": 0,
+      "badV": 0
+    }
+  ]
+}

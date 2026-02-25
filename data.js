@@ -139,19 +139,40 @@ function initializeParticipantLevels(participantId){
     var shuffledTargets = shuffleWithRng(manifestData.registry.targets, rng);
     var shuffledFillers = shuffleWithRng(manifestData.registry.fillers, rng);
 
-    var targetBins = splitIntoLevels(shuffledTargets, levelCount);
-    var fillerBins = splitIntoLevels(shuffledFillers, levelCount);
+    // Per-level design budget (must fit levelTrialCount and lag constraints)
+    var targetPairsPerLevel = 18; // => 36 slots (strict lag-fit margin)
+    var vigilancePairsPerLevel = 6; // => 12 slots
+    var fillerSinglesPerLevel = Math.max(0, levelTrialCount - (targetPairsPerLevel * 2) - (vigilancePairsPerLevel * 2)); // default 72
 
+    var neededTargets = targetPairsPerLevel * levelCount;
+    var neededVigilance = vigilancePairsPerLevel * levelCount;
+    var neededFillers = (fillerSinglesPerLevel * levelCount) + neededVigilance;
+
+    if (shuffledTargets.length < neededTargets){
+        throw new Error("Not enough target images for level design budget");
+    }
+    if (shuffledFillers.length < neededFillers){
+        throw new Error("Not enough filler images for level design budget");
+    }
+
+    var tCursor = 0;
+    var fCursor = 0;
     var levels = {};
-    levelKeys.forEach(function(levelKey, idx){
-        var levelTargets = targetBins[idx].map(function(r){ return r.url; });
-        var levelFillers = fillerBins[idx].map(function(r){ return r.url; });
-        var vigCount = Math.max(8, Math.min(30, Math.floor(levelFillers.length * 0.12)));
-        var levelVigilance = levelFillers.slice(0, Math.min(vigCount, levelFillers.length));
+
+    levelKeys.forEach(function(levelKey){
+        var levelTargets = shuffledTargets.slice(tCursor, tCursor + targetPairsPerLevel).map(function(r){ return r.url; });
+        tCursor += targetPairsPerLevel;
+
+        var vigilanceSources = shuffledFillers.slice(fCursor, fCursor + vigilancePairsPerLevel).map(function(r){ return r.url; });
+        fCursor += vigilancePairsPerLevel;
+
+        var fillerSingles = shuffledFillers.slice(fCursor, fCursor + fillerSinglesPerLevel).map(function(r){ return r.url; });
+        fCursor += fillerSinglesPerLevel;
+
         levels[levelKey] = {
             targets: levelTargets,
-            fillers: levelFillers,
-            vigilance: levelVigilance
+            fillers: fillerSingles.concat(vigilanceSources),
+            vigilance: vigilanceSources
         };
     });
 

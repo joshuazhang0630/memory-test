@@ -1016,64 +1016,98 @@ function buildLevelSequence(levelKey){
 	var fillers = shuffleArray(level.fillers.slice());
 	var vigilance = shuffleArray(level.vigilance.slice());
 	var totalSlots = levelTrialCount;
-	var targetOcc = targets.length * 2;
-	var vigilanceOcc = vigilance.length * 2;
-	var remaining = totalSlots - targetOcc - vigilanceOcc;
-	if (remaining < 0){
-		var maxVigilanceItems = Math.max(0, Math.floor((totalSlots - targetOcc) / 2));
-		console.warn("Too many vigilance items for fixed trial count; trimming to", maxVigilanceItems);
-		vigilance = vigilance.slice(0, maxVigilanceItems);
-		vigilanceOcc = vigilance.length * 2;
-		remaining = totalSlots - targetOcc - vigilanceOcc;
-	}
-	var fillerSingles = shuffleArray(fillers).slice(0, Math.max(0, remaining));
-	var slots = new Array(totalSlots).fill(null);
-	var types = new Array(totalSlots).fill(null);
-	var perf = new Array(totalSlots).fill(null);
 
-	targets.forEach(function(item, idx){
-		placePair(slots, types, perf, item, TARGET, REPEAT, targetRepeatDelayMin, targetRepeatDelayMax, "target " + (idx + 1));
-	});
+	function tryBuildOnce(){
+		var slots = new Array(totalSlots).fill(null);
+		var types = new Array(totalSlots).fill(null);
+		var perf = new Array(totalSlots).fill(null);
 
-	vigilance.forEach(function(item, idx){
-		placePair(slots, types, perf, item, FILLER, VIGILANCE, 1, vigilanceRepeatMaxGap, "vigilance " + (idx + 1));
-	});
-
-	var fillerIndex = 0;
-	for (var i = 0; i < slots.length; i++){
-		if (slots[i] === null){
-			if (fillerIndex < fillerSingles.length){
-				slots[i] = fillerSingles[fillerIndex];
-				types[i] = FILLER;
-				perf[i] = CORRECTREJECTION;
-				fillerIndex++;
+		// strict target placement
+		for (var t = 0; t < targets.length; t++){
+			var item = targets[t];
+			var placed = false;
+			for (var attempt = 0; attempt < 400; attempt++){
+				var lag = randomInt(targetRepeatDelayMin, targetRepeatDelayMax);
+				var maxFirst = totalSlots - lag - 1;
+				if (maxFirst < 0){
+					break;
+				}
+				var first = randomInt(0, maxFirst);
+				var second = first + lag;
+				if (slots[first] === null && slots[second] === null){
+					slots[first] = item;
+					types[first] = TARGET;
+					perf[first] = CORRECTREJECTION;
+					slots[second] = item;
+					types[second] = REPEAT;
+					perf[second] = MISS;
+					placed = true;
+					break;
+				}
+			}
+			if (!placed){
+				return null;
 			}
 		}
+
+		// strict vigilance placement
+		for (var v = 0; v < vigilance.length; v++){
+			var vItem = vigilance[v];
+			var vPlaced = false;
+			for (var vAttempt = 0; vAttempt < 400; vAttempt++){
+				var vLag = randomInt(1, vigilanceRepeatMaxGap);
+				var vMaxFirst = totalSlots - vLag - 1;
+				if (vMaxFirst < 0){
+					break;
+				}
+				var vFirst = randomInt(0, vMaxFirst);
+				var vSecond = vFirst + vLag;
+				if (slots[vFirst] === null && slots[vSecond] === null){
+					slots[vFirst] = vItem;
+					types[vFirst] = FILLER;
+					perf[vFirst] = CORRECTREJECTION;
+					slots[vSecond] = vItem;
+					types[vSecond] = VIGILANCE;
+					perf[vSecond] = MISS;
+					vPlaced = true;
+					break;
+				}
+			}
+			if (!vPlaced){
+				return null;
+			}
+		}
+
+		// fill remaining slots with filler singles
+		var fillerSingles = [];
+		for (var f = 0; f < fillers.length; f++){
+			if (vigilance.indexOf(fillers[f]) === -1){
+				fillerSingles.push(fillers[f]);
+			}
+		}
+		fillerSingles = shuffleArray(fillerSingles);
+		var fillCursor = 0;
+		for (var i = 0; i < totalSlots; i++){
+			if (slots[i] === null){
+				if (fillCursor >= fillerSingles.length){
+					return null;
+				}
+				slots[i] = fillerSingles[fillCursor++];
+				types[i] = FILLER;
+				perf[i] = CORRECTREJECTION;
+			}
+		}
+
+		return { sequence: slots, types: types, perf: perf };
 	}
 
-	for (var j = 0; j < slots.length; j++){
-		if (slots[j] === null){
-			var fallback = fillers[(j + fillerIndex) % Math.max(1, fillers.length)];
-			slots[j] = fallback;
-			types[j] = FILLER;
-			perf[j] = CORRECTREJECTION;
+	for (var tries = 0; tries < 80; tries++){
+		var built = tryBuildOnce();
+		if (built){
+			return built;
 		}
 	}
-
-	var countSummary = { target: 0, repeat: 0, filler: 0, vigilance: 0 };
-	types.forEach(function(type){
-		if (type === TARGET){
-			countSummary.target++;
-		} else if (type === REPEAT){
-			countSummary.repeat++;
-		} else if (type === VIGILANCE){
-			countSummary.vigilance++;
-		} else if (type === FILLER){
-			countSummary.filler++;
-		}
-	});
-	console.log("Level", levelKey, "sequence counts:", countSummary);
-	return { sequence: slots, types: types, perf: perf };
+	throw new Error("Unable to build valid sequence for level " + levelKey + " under strict constraints");
 }
 
 function makeImSequence(){
